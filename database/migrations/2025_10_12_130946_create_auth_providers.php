@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('roles', function (Blueprint $table) {
+        Schema::create('auth_providers', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->foreignId('userId')->constrained('users');
+            $table->enum('provider',['LOCAL','GOOGLE','TWITTER'])->default('LOCAL');
+            $table->string('providerId', 255)->unique();
+            $table->string('password', 255)->nullable();
             $table->timestamps();
         });
     }
@@ -23,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('roles');
+        Schema::dropIfExists('auth_providers');
     }
 };
