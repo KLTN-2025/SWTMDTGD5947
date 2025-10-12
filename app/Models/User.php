@@ -4,13 +4,13 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasFactory, Notifiable;
 
     protected $table = 'users';
 
@@ -24,10 +24,6 @@ class User extends Authenticatable
         'roleId',
     ];
 
-    const CREATED_AT = 'createdAt';
-    const UPDATED_AT = 'updatedAt';
-    const DELETED_AT = 'deletedAt';
-
     protected $casts = [
         'isActive' => 'boolean',
         'createdAt' => 'datetime',
@@ -37,7 +33,7 @@ class User extends Authenticatable
 
     const STATUS_ACTIVE = 'ACTIVE';
     const STATUS_INACTIVE = 'INACTIVE';
-    
+
     public function role()
     {
         return $this->belongsTo(Role::class, 'roleId');
@@ -55,11 +51,13 @@ class User extends Authenticatable
         return $this->hasMany(AuthProvider::class, 'user_id');
     }
 
-    protected function casts(): array
+    public function getJWTIdentifier()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims()
+    {
+        return [];
     }
 }
