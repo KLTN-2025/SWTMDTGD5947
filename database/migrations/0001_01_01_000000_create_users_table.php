@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('userName', 50)->unique();
             $table->string('imageUrl')->nullable();
             $table->string('email',50)->unique();
-            $table->string('password');
             $table->boolean('isActive')->default(false);
             $table->foreignId('roleId')->constrained('roles');
             $table->rememberToken();
