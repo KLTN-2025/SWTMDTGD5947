@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Helper\HttpCode;
+use App\Helper\MsgCode;
 use App\services\AuthService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
@@ -26,5 +27,19 @@ class AuthController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function logout()
+    {
+        return response()->json([
+            'code' => HttpCode::SUCCESS,
+            'status' => true,
+            'msgCode' => MsgCode::LOGIN_SUCCESS,
+            'message' => 'Đăng xuất thành công',
+        ])->withoutCookie('token');
+    }
+
+    public function register(Request $request) {
+        return $this->authService->register($request);
     }
 }

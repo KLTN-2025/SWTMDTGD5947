@@ -16,8 +16,9 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->string('phoneNumber')->nullable();
             $table->foreignId('userId')->constrained('users');
-            $table->timestamps();
-            $table->softDeletes();
+            $table->timestamp('createdAt')->nullable();
+            $table->timestamp('updatedAt')->nullable();
+            $table->timestamp('deletedAt')->nullable();
         });
     }
 

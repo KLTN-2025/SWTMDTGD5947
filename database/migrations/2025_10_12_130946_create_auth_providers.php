@@ -14,10 +14,11 @@ return new class extends Migration
         Schema::create('auth_providers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('userId')->constrained('users');
-            $table->enum('provider',['LOCAL','GOOGLE','TWITTER'])->default('LOCAL');
-            $table->string('providerId', 255)->unique();
+            $table->enum('provider', ['LOCAL', 'GOOGLE', 'TWITTER'])->default('LOCAL');
+            $table->string('providerId', 255)->nullable();
             $table->string('password', 255)->nullable();
-            $table->timestamps();
+            $table->timestamp('createdAt')->nullable();
+            $table->timestamp('updatedAt')->nullable();
         });
     }
 

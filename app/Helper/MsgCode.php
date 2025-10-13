@@ -11,4 +11,5 @@ class MsgCode
     const UNAUTHORIZED = 'UNAUTHORIZED';
     const NOT_FOUND = 'NOT_FOUND';
     const SERVER_ERROR = 'SERVER_ERROR';
+    const BAD_REQUEST = 'BAD_REQUEST';
 }

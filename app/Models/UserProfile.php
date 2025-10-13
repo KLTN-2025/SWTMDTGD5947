@@ -18,6 +18,8 @@ class UserProfile extends Model
         'userId',
     ];
 
+    const CREATED_AT = 'createdAt';
+    const UPDATED_AT = 'updatedAt';
     const DELETED_AT = 'deletedAt';
 
     public function user()
