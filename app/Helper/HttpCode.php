@@ -10,6 +10,6 @@ class HttpCode
     const NOT_FOUND = 404;
     const VALIDATION_ERROR = 422;
     const SERVER_ERROR = 500;
-    const hhhhjkhh = 900;
-    const hhojkhjkhjop = 900;
+    const hhhhh = 900;
+    const hhoop = 900;
 }
