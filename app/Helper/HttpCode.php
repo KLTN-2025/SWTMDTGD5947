@@ -10,4 +10,5 @@ class HttpCode
     const NOT_FOUND = 404;
     const VALIDATION_ERROR = 422;
     const SERVER_ERROR = 500;
+    const SUCCESS_NEW = 202;
 }
