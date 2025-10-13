@@ -18,6 +18,9 @@ class AuthProvider extends Model
         'password',
     ];
 
+    const CREATED_AT = 'createdAt';
+    const UPDATED_AT = 'updatedAt';
+
     public function user()
     {
         return $this->belongsTo(User::class, 'userId');

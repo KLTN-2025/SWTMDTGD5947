@@ -16,12 +16,13 @@ return new class extends Migration
             $table->string('name', 50);
             $table->string('userName', 50)->unique();
             $table->string('imageUrl')->nullable();
-            $table->string('email',50)->unique();
+            $table->string('email', 50)->unique();
             $table->boolean('isActive')->default(false);
             $table->foreignId('roleId')->constrained('roles');
             $table->rememberToken();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->timestamp('createdAt')->nullable();
+            $table->timestamp('updatedAt')->nullable();
+            $table->timestamp('deletedAt')->nullable();
         });
 
         Schema::create('sessions', function (Blueprint $table) {

@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use App\Models\Role;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -33,7 +33,10 @@ class User extends Authenticatable implements JWTSubject
 
     const STATUS_ACTIVE = 'ACTIVE';
     const STATUS_INACTIVE = 'INACTIVE';
+    const CREATED_AT = 'createdAt';
+    const UPDATED_AT = 'updatedAt';
 
+    public $timestamps = true;
     public function role()
     {
         return $this->belongsTo(Role::class, 'roleId');
@@ -42,13 +45,13 @@ class User extends Authenticatable implements JWTSubject
     // User có 1 profile (1-1)
     public function profile()
     {
-        return $this->hasOne(UserProfile::class, 'user_id');
+        return $this->hasOne(UserProfile::class, 'userId');
     }
 
     // User có nhiều AuthProviders (1-n)
-    public function authProviders()
+    public function authProvider()
     {
-        return $this->hasMany(AuthProvider::class, 'user_id');
+        return $this->hasMany(AuthProvider::class, 'userId');
     }
 
     public function getJWTIdentifier()
@@ -59,5 +62,17 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+
+    public function checkUserExsis($email)
+    {
+        $user = User::where('email', $email)->first();
+        return $user;
+    }
+
+    public function getRoleByName($name)
+    {
+        $role = Role::where('name', $name)->first();
+        return $role;
     }
 }
