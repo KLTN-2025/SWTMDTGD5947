@@ -278,4 +278,69 @@ class AuthService
       ];
     }
   }
+
+  public function googleCallBack($informationUser)
+  {
+    $userResult = $this->userModel->checkUserExsis($informationUser['email']);
+    if (!$userResult) {
+      try {
+        $role = $this->userModel->getRoleByName(Constants::USER);
+        $result = DB::transaction(function () use ($informationUser, $role) {
+          $user = User::create([
+            'name' => $informationUser['name'],
+            'userName' => explode('@', $informationUser['email'])[0],
+            'email' => $informationUser['email'],
+            'isActive' => true,
+            'roleId' => $role->id,
+          ]);
+
+          $user->profile()->create([
+            'userId' => $user->id,
+          ]);
+
+          $user->authProvider()->create([
+            'userId' => $user->id,
+            'provider' => 'GOOGLE',
+            'providerId' => $informationUser['sub'],
+          ]);
+
+          return $user;
+        });
+        
+        $tokenData = $this->generateTokenAndCookie($result);
+        return [
+          'code' => HttpCode::SUCCESS,
+          'status' => true,
+          'msgCode' => MsgCode::SUCCESS,
+          'message' => 'Đăng nhập thành công',
+          'data' => [
+            'user' => $result,
+            'access_token' => $result['token'],
+          ],
+          'cookie' => $result['cookie']
+        ];
+      } catch (Exception $e) {
+        Log::error($e);
+        return [
+          'code' => HttpCode::SERVER_ERROR,
+          'status' => true,
+          'msgCode' => MsgCode::SERVER_ERROR,
+          'message' => 'Đăng nhập thất bại'
+        ];
+      }
+    }
+
+    $tokenData = $this->generateTokenAndCookie($userResult);
+    return [
+      'code' => HttpCode::SUCCESS,
+      'status' => true,
+      'msgCode' => MsgCode::SUCCESS,
+      'message' => 'Đăng nhập thành công',
+      'data' => [
+        'user' => $userResult,
+        'access_token' => $tokenData['token'],
+      ],
+      'cookie' => $tokenData['cookie']
+    ];
+  }
 }

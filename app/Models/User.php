@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helper\Constants;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -61,7 +62,12 @@ class User extends Authenticatable implements JWTSubject
 
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            'email' => $this->email,
+            'userName' => $this->userName,
+            'role' => $this->role->name ?? Constants::USER,
+            'provider' => $this->authProvider()->provider ?? null,
+        ];
     }
 
     public function checkUserExsis($email)
