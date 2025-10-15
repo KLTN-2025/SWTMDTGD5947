@@ -12,4 +12,6 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/register', [AuthController::class, 'register']);
+    Route::get('/google', [AuthController::class, 'google'])->middleware('web');
+    Route::get('/google/callback', [AuthController::class, 'googleCallBack'])->middleware('web');
 });

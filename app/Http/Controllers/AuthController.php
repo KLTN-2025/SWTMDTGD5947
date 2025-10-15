@@ -6,6 +6,7 @@ use App\Helper\HttpCode;
 use App\Helper\MsgCode;
 use App\services\AuthService;
 use Illuminate\Http\Request;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -41,5 +42,20 @@ class AuthController extends Controller
 
     public function register(Request $request) {
         return $this->authService->register($request);
+    }
+
+    public function google () {
+       return Socialite::driver('google')->stateless()->redirect();
+    }
+
+    public function googleCallBack() {
+        $googleUser = Socialite::driver('google')->stateless()->user();
+        $result = $this->authService->googleCallBack($googleUser->user);
+        if (isset($result['cookie'])) {
+            $cookie = $result['cookie'];
+            unset($result['cookie']);
+            return response()->json($result)->cookie($cookie);
+        }
+        return response()->json($result);
     }
 }
