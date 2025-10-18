@@ -1,24 +1,54 @@
+# General
 *.log
 .DS_Store
-.env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
+Thumbs.db
+
+# PHP/Laravel specific (shoe-store-php)
+shoe-store-php/.env
+shoe-store-php/.env.backup
+shoe-store-php/.env.production
+shoe-store-php/.phpactor.json
+shoe-store-php/.phpunit.result.cache
+shoe-store-php/.phpunit.cache
+shoe-store-php/auth.json
+shoe-store-php/public/build
+shoe-store-php/public/hot
+shoe-store-php/public/storage
+shoe-store-php/storage/*.key
+shoe-store-php/storage/pail
+shoe-store-php/vendor/
+shoe-store-php/node_modules/
+
+# React/Node.js specific (shoe-store-react)
+shoe-store-react/node_modules/
+shoe-store-react/dist/
+shoe-store-react/dist-ssr/
+shoe-store-react/*.local
+shoe-store-react/.config/
+shoe-store-react/logs/
+shoe-store-react/npm-debug.log*
+shoe-store-react/yarn-debug.log*
+shoe-store-react/yarn-error.log*
+shoe-store-react/pnpm-debug.log*
+shoe-store-react/lerna-debug.log*
+
+# IDE directories and files
 /.fleet
 /.idea
 /.nova
-/.phpunit.cache
 /.vscode
 /.zed
-/auth.json
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Keep specific VSCode extensions file
+!.vscode/extensions.json
+
+# Environment files (keep shoe-store-react .env as per its gitignore)
+!shoe-store-react/.env
+
 Homestead.json
 Homestead.yaml
-Thumbs.db
