@@ -58,4 +58,12 @@ class AuthController extends Controller
         }
         return response()->json($result);
     }
+
+    public function sendPasswordResetEmail(Request $request) {
+        return $this->authService->sendPasswordResetEmail($request->email);
+    }
+
+    public function resetPassword(Request $request) {
+        return $this->authService->resetPassword($request);
+    }
 }
