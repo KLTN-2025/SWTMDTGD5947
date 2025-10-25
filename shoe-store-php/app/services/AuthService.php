@@ -5,6 +5,7 @@ namespace App\services;
 use App\Helper\Constants;
 use App\Helper\HttpCode;
 use App\Helper\MsgCode;
+use App\Mail\ResetPassMail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
@@ -12,6 +13,10 @@ use App\Models\AuthProvider;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthService
@@ -228,8 +233,6 @@ class AuthService
       'password' => bcrypt($validationResult['data']['password']),
     ];
 
-    $data['password'] = bcrypt($data['password']);
-
     try {
       $user = DB::transaction(function () use ($data) {
         $role = $this->userModel->getRoleByName(Constants::USER);
@@ -306,7 +309,7 @@ class AuthService
 
           return $user;
         });
-        
+
         $tokenData = $this->generateTokenAndCookie($result);
         return [
           'code' => HttpCode::SUCCESS,
@@ -342,5 +345,150 @@ class AuthService
       ],
       'cookie' => $tokenData['cookie']
     ];
+  }
+
+  public function sendPasswordResetEmail($email)
+  {
+    $validator = Validator::make(
+      ['email' => $email],
+      [
+        'email' => 'required|email',
+      ],
+      [
+        'email.required' => 'Vui lòng nhập email.',
+        'email.email' => 'Email không hợp lệ.',
+      ]
+    );
+
+    if ($validator->fails()) {
+      return [
+        'code' => HttpCode::VALIDATION_ERROR,
+        'status' => false,
+        'msgCode' => MsgCode::VALIDATION_ERROR,
+        'message' => $validator->errors(),
+      ];
+    }
+
+    $user = $this->userModel->checkUserExsis($email);
+    if (!$user) {
+      return [
+        'code' => HttpCode::NOT_FOUND,
+        'status' => false,
+        'msgCode' => MsgCode::NOT_FOUND,
+        'message' => 'Người dùng không tồn tại'
+      ];
+    }
+
+    return $this->sendEmail($user);
+  }
+
+  private function sendEmail($user)
+  {
+    try {
+      $token = JWTAuth::customClaims([
+        'exp' => now()->addMinutes(15)->timestamp,
+        'purpose' => 'password_reset'
+      ])->fromUser($user);
+      $resetLink = config('app.frontend_url') . "/reset-password?token=" . $token;
+      Mail::to($user->email)->queue(new ResetPassMail($user, $resetLink));
+
+      return [
+        'code' => HttpCode::SUCCESS,
+        'status' => true,
+        'msgCode' => MsgCode::SUCCESS,
+        'message' => 'Gửi email thành công tới ' . $user->email
+      ];
+    } catch (Exception $e) {
+      Log::error('Send email failed: ' . $e->getMessage());
+      return [
+        'code' => HttpCode::BAD_REQUEST,
+        'status' => false,
+        'msgCode' => MsgCode::BAD_REQUEST,
+        'message' => 'Gửi email thất bại'
+      ];
+    }
+  }
+
+  public function resetPassword($request)
+  {
+    $validator = Validator::make($request->all(), [
+      'password' => 'required|string|min:6|max:50',
+      're_password' => 'required|same:password',
+      'token' => 'required|string',
+    ], [
+      'password.required' => 'Vui lòng nhập mật khẩu mới',
+      'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+      'password.max' => 'Mật khẩu không được vượt quá 50 ký tự',
+      're_password.required' => 'Vui lòng nhập lại mật khẩu xác nhận',
+      're_password.same' => 'Mật khẩu xác nhận không khớp',
+      'token.required' => 'Thiếu mã token xác thực',
+    ]);
+
+    if ($validator->fails()) {
+      return response()->json([
+        'code' => 400,
+        'status' => false,
+        'errors' => $validator->errors(),
+      ], 400);
+    }
+
+    try {
+      $token = $request->token;
+      $user = JWTAuth::setToken($token)->authenticate();
+
+      if (!$user) {
+        return [
+          'code' => HttpCode::UNAUTHORIZED,
+          'status' => false,
+          'msgCode' => MsgCode::UNAUTHORIZED,
+          'message' => 'User không tồn tại'
+        ];
+      }
+
+      $authProvider = AuthProvider::where('userId', $user->id)->first();
+      if (!$authProvider) {
+        return [
+          'code' => HttpCode::UNAUTHORIZED,
+          'status' => false,
+          'msgCode' => MsgCode::UNAUTHORIZED,
+          'message' => 'Không tìm thấy thông tin đăng nhập user',
+        ];
+      }
+
+      $authProvider['password'] = bcrypt($request->password);
+      $authProvider->save();
+
+      return [
+        'code' => HttpCode::SUCCESS,
+        'status' => false,
+        'msgCode' => MsgCode::SUCCESS,
+        'message' => 'Đổi mật khẩu thành công',
+        'data' => $authProvider->fresh()
+      ];
+    } catch (TokenExpiredException $e) {
+      Log::error('TokenExpiredException: ' . $e->getMessage());
+      return [
+        'code' => HttpCode::UNAUTHORIZED,
+        'status' => false,
+        'msgCode' => MsgCode::UNAUTHORIZED,
+        'message' => 'Token không hợp lệ hoặc đã hết hạn'
+      ];
+    } catch (TokenInvalidException $e) {
+      Log::error('TokenInvalidException: ' . $e->getMessage());
+      return [
+        'code' => HttpCode::UNAUTHORIZED,
+        'status' => false,
+        'msgCode' => MsgCode::UNAUTHORIZED,
+        'message' => 'Token không hợp lệ'
+      ];
+    } catch (JWTException $e) {
+      Log::error('JWTException: ' . $e->getMessage());
+      return [
+        'code' => HttpCode::UNAUTHORIZED,
+        'status' => false,
+        'msgCode' => MsgCode::UNAUTHORIZED,
+        'message' => 'Token không không tồn tại hoặc lỗi xác thực'
+      ];
+    }
   }
 }
