@@ -11,16 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('auth_providers', function (Blueprint $table) {
+        Schema::create('product_images', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('userId');
-            $table->enum('provider', ['LOCAL', 'GOOGLE'])->default('LOCAL');
-            $table->string('providerId', 255)->nullable();
-            $table->string('password', 255)->nullable();
+            $table->unsignedBigInteger('productId');
+            $table->string('url', 255);
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('deletedAt')->nullable();
             
-            $table->foreign('userId')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('productId')->references('id')->on('products')->onDelete('cascade');
         });
     }
 
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('auth_providers');
+        Schema::dropIfExists('product_images');
     }
 };

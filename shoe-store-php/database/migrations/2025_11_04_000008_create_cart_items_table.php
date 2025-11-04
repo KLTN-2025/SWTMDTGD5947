@@ -11,16 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('auth_providers', function (Blueprint $table) {
+        Schema::create('cart_items', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('userId');
-            $table->enum('provider', ['LOCAL', 'GOOGLE'])->default('LOCAL');
-            $table->string('providerId', 255)->nullable();
-            $table->string('password', 255)->nullable();
+            $table->unsignedBigInteger('cartId');
+            $table->unsignedBigInteger('productVariantId');
+            $table->integer('quantity')->default(1);
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('deletedAt')->nullable();
             
-            $table->foreign('userId')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('cartId')->references('id')->on('carts')->onDelete('cascade');
+            $table->foreign('productVariantId')->references('id')->on('product_variants')->onDelete('cascade');
         });
     }
 
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('auth_providers');
+        Schema::dropIfExists('cart_items');
     }
 };

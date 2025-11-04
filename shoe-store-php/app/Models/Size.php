@@ -6,29 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UserProfile extends Model
+class Size extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'user_profile';
+    protected $table = 'sizes';
 
     protected $fillable = [
-        'userId',
-        'phone',
-        'address',
-        'dateOfBirth',
-    ];
-
-    protected $casts = [
-        'dateOfBirth' => 'date',
+        'nameSize',
+        'description',
     ];
 
     const CREATED_AT = 'createdAt';
     const UPDATED_AT = 'updatedAt';
     const DELETED_AT = 'deletedAt';
 
-    public function user()
+    // One-to-many relationship with product variants
+    public function productVariants()
     {
-        return $this->belongsTo(User::class, 'userId');
+        return $this->hasMany(ProductVariant::class, 'sizeId');
     }
 }

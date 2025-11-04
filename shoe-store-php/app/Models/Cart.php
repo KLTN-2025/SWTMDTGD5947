@@ -6,29 +6,29 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UserProfile extends Model
+class Cart extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'user_profile';
+    protected $table = 'carts';
 
     protected $fillable = [
         'userId',
-        'phone',
-        'address',
-        'dateOfBirth',
-    ];
-
-    protected $casts = [
-        'dateOfBirth' => 'date',
     ];
 
     const CREATED_AT = 'createdAt';
     const UPDATED_AT = 'updatedAt';
     const DELETED_AT = 'deletedAt';
 
+    // Many-to-one relationship with user
     public function user()
     {
         return $this->belongsTo(User::class, 'userId');
+    }
+
+    // One-to-many relationship with cart items
+    public function items()
+    {
+        return $this->hasMany(CartItem::class, 'cartId');
     }
 }
