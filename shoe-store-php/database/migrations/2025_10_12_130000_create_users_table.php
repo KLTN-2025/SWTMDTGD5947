@@ -15,14 +15,16 @@ return new class extends Migration
             $table->id();
             $table->string('name', 50);
             $table->string('userName', 50)->unique();
-            $table->string('imageUrl')->nullable();
+            $table->string('imageUrl', 255)->nullable();
             $table->string('email', 50)->unique();
-            $table->boolean('isActive')->default(false);
-            $table->foreignId('roleId')->constrained('roles');
+            $table->boolean('isActive')->default(true);
+            $table->unsignedBigInteger('roleId');
             $table->rememberToken();
-            $table->timestamp('createdAt')->nullable();
-            $table->timestamp('updatedAt')->nullable();
+            $table->timestamp('createdAt')->useCurrent();
+            $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
             $table->timestamp('deletedAt')->nullable();
+            
+            $table->foreign('roleId')->references('id')->on('roles')->onDelete('cascade');
         });
 
         Schema::create('sessions', function (Blueprint $table) {

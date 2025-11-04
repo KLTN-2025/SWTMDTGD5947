@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Helper\Constants;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
@@ -11,7 +12,7 @@ use App\Models\Role;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $table = 'users';
 
@@ -36,6 +37,7 @@ class User extends Authenticatable implements JWTSubject
     const STATUS_INACTIVE = 'INACTIVE';
     const CREATED_AT = 'createdAt';
     const UPDATED_AT = 'updatedAt';
+    const DELETED_AT = 'deletedAt';
 
     public $timestamps = true;
     public function role()
@@ -53,6 +55,30 @@ class User extends Authenticatable implements JWTSubject
     public function authProvider()
     {
         return $this->hasMany(AuthProvider::class, 'userId');
+    }
+
+    // User có 1 cart (1-1)
+    public function cart()
+    {
+        return $this->hasOne(Cart::class, 'userId');
+    }
+
+    // User có nhiều orders (1-n)
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'userId');
+    }
+
+    // User có nhiều reviews (1-n)
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'userId');
+    }
+
+    // User có nhiều chat box messages (1-n)
+    public function chatBoxMessages()
+    {
+        return $this->hasMany(ChatBoxMessage::class, 'userId');
     }
 
     public function getJWTIdentifier()

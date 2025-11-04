@@ -6,29 +6,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UserProfile extends Model
+class HistoriesChatBox extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'user_profile';
+    protected $table = 'histories_chat_box';
 
     protected $fillable = [
-        'userId',
-        'phone',
-        'address',
-        'dateOfBirth',
-    ];
-
-    protected $casts = [
-        'dateOfBirth' => 'date',
+        'chatBoxId',
+        'context',
+        'message',
     ];
 
     const CREATED_AT = 'createdAt';
     const UPDATED_AT = 'updatedAt';
     const DELETED_AT = 'deletedAt';
 
-    public function user()
+    // Many-to-one relationship with chat box message
+    public function chatBox()
     {
-        return $this->belongsTo(User::class, 'userId');
+        return $this->belongsTo(ChatBoxMessage::class, 'chatBoxId');
     }
 }

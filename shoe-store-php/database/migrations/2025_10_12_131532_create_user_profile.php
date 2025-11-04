@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('user_profile', function (Blueprint $table) {
             $table->id();
-            $table->string('address')->nullable();
-            $table->string('phoneNumber')->nullable();
-            $table->foreignId('userId')->constrained('users');
-            $table->timestamp('createdAt')->nullable();
-            $table->timestamp('updatedAt')->nullable();
+            $table->unsignedBigInteger('userId')->unique();
+            $table->string('phone', 20)->nullable();
+            $table->string('address', 255)->nullable();
+            $table->date('dateOfBirth')->nullable();
+            $table->timestamp('createdAt')->useCurrent();
+            $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
             $table->timestamp('deletedAt')->nullable();
+            
+            $table->foreign('userId')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

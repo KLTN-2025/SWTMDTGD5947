@@ -6,29 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UserProfile extends Model
+class ProductImage extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'user_profile';
+    protected $table = 'product_images';
 
     protected $fillable = [
-        'userId',
-        'phone',
-        'address',
-        'dateOfBirth',
-    ];
-
-    protected $casts = [
-        'dateOfBirth' => 'date',
+        'productId',
+        'url',
     ];
 
     const CREATED_AT = 'createdAt';
     const UPDATED_AT = 'updatedAt';
     const DELETED_AT = 'deletedAt';
 
-    public function user()
+    // Many-to-one relationship with product
+    public function product()
     {
-        return $this->belongsTo(User::class, 'userId');
+        return $this->belongsTo(Product::class, 'productId');
     }
 }

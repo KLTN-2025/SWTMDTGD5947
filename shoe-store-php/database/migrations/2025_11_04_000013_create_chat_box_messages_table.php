@@ -11,14 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('auth_providers', function (Blueprint $table) {
+        Schema::create('chat_box_messages', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('userId');
-            $table->enum('provider', ['LOCAL', 'GOOGLE'])->default('LOCAL');
-            $table->string('providerId', 255)->nullable();
-            $table->string('password', 255)->nullable();
+            $table->unsignedBigInteger('categoryId')->nullable();
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('deletedAt')->nullable();
             
             $table->foreign('userId')->references('id')->on('users')->onDelete('cascade');
         });
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('auth_providers');
+        Schema::dropIfExists('chat_box_messages');
     }
 };

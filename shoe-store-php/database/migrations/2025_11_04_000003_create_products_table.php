@@ -11,16 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('auth_providers', function (Blueprint $table) {
+        Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('userId');
-            $table->enum('provider', ['LOCAL', 'GOOGLE'])->default('LOCAL');
-            $table->string('providerId', 255)->nullable();
-            $table->string('password', 255)->nullable();
+            $table->string('skuId', 50)->unique();
+            $table->string('name', 50);
+            $table->enum('status', ['SOLD_OUT', 'IN_STOCK', 'PRE_SALE'])->default('IN_STOCK');
+            $table->text('description')->nullable();
+            $table->float('basePrice');
+            $table->integer('quantity')->default(0);
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
-            
-            $table->foreign('userId')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('auth_providers');
+        Schema::dropIfExists('products');
     }
 };
