@@ -117,16 +117,18 @@ class AuthService
   {
     $token = JWTAuth::fromUser($user);
 
+    $isProduction = config('app.env') === 'production';
+    
     $cookie = cookie(
       'token',               // name
       $token,                // value
       config('jwt.ttl'),     // minutes (from JWT config)
       '/',                   // path
       null,                  // domain (null = current domain)
-      false,                 // secure (HTTPS only)
+      $isProduction,         // secure (true for production HTTPS)
       true,                  // httpOnly (prevent XSS)
       false,                 // raw
-      'none'                 // sameSite - 'none' allows cross-origin (requires secure in production)
+      $isProduction ? 'none' : 'lax'  // sameSite - 'lax' for dev, 'none' for production
     );
 
     return [

@@ -10,8 +10,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ProductsPage from "./pages/Products";
 import AuthPage from "./pages/auth/Auth";
-import ProfilePage from "./pages/auth/Profile";
 import ResetPasswordPage from "./pages/auth/ResetPassword";
+import ProfilePage from "./pages/Profile";
 import CartPage from "./pages/cart/CartCheckout";
 import OrdersPage from "./pages/orders/Orders";
 import OrderDetailPage from "./pages/orders/OrderDetail";
@@ -47,6 +47,34 @@ import { useAuth } from "./state/auth";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
+
+// User Protected Route (for logged-in users)
+function UserProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      toast.error("Vui lòng đăng nhập để truy cập trang này");
+    }
+  }, [user, loading]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+          <p className="mt-4 text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 // Admin Protected Route
 function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -101,7 +129,7 @@ const App = () => (
               <Route path="/orders/:id" element={<OrderDetailPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile" element={<UserProtectedRoute><ProfilePage /></UserProtectedRoute>} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               
               {/* Admin Routes */}

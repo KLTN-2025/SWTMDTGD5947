@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,12 @@ Route::group(['prefix' => 'auth'], function () {
     Route::get('/google/callback', [AuthController::class, 'googleCallBack'])->middleware('web');
     Route::post('/send-email-reset-pass', [AuthController::class, 'sendPasswordResetEmail']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+
+Route::group(['prefix' => 'profile' , 'middleware' => ['user']], function () {
+    Route::get('/', [ProfileController::class, 'getProfile']);
+    Route::post('/update', [ProfileController::class, 'updateProfile']);
+    Route::post('/change-password', [ProfileController::class, 'changePassword']);
 });
 
 // ============================================================================
@@ -78,5 +85,4 @@ Route::group(['prefix' => 'admin', 'middleware' => ['admin']], function () {
         Route::post('/{id}', [UserController::class, 'update']); // For form-data
         Route::delete('/{id}', [UserController::class, 'destroy']);
     });
-
 });
