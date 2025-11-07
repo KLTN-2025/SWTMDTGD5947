@@ -235,7 +235,7 @@ export default function Dashboard() {
                 Quản lý khách hàng
               </Button>
             </a>
-            <a href="/admin/reports">
+            <a href="/admin/admin/reports">
               <Button className="w-full" variant="outline">
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Xem báo cáo

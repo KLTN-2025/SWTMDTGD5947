@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,4 +17,23 @@ Route::group(['prefix' => 'auth'], function () {
     Route::get('/google/callback', [AuthController::class, 'googleCallBack'])->middleware('web');
     Route::post('/send-email-reset-pass', [AuthController::class, 'sendPasswordResetEmail']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+
+// Public Product Routes - For Client/Customer (Read-only)
+Route::group(['prefix' => 'products'], function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/search', [ProductController::class, 'search']);
+    Route::get('/{id}', [ProductController::class, 'show']);
+});
+
+// Admin Routes - Protected by auth + admin middleware
+Route::group(['prefix' => 'admin/products'], function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/search', [ProductController::class, 'search']);
+    Route::get('/{id}', [ProductController::class, 'show']);
+    Route::post('/', [ProductController::class, 'store']);
+    Route::put('/{id}', [ProductController::class, 'update']);
+    Route::post('/{id}', [ProductController::class, 'update']);
+    Route::delete('/{id}', [ProductController::class, 'destroy']);
+    Route::delete('/images/{imageId}', [ProductController::class, 'deleteImage']);
 });

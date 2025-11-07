@@ -126,7 +126,7 @@ class AuthService
       false,                 // secure (HTTPS only)
       true,                  // httpOnly (prevent XSS)
       false,                 // raw
-      'strict'               // sameSite
+      'none'                 // sameSite - 'none' allows cross-origin (requires secure in production)
     );
 
     return [
