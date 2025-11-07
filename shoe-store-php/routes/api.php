@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,12 @@ Route::group(['prefix' => 'products'], function () {
     Route::get('/{id}', [ProductController::class, 'show']);
 });
 
+// Public Category Routes - For Client/Customer (Read-only)
+Route::group(['prefix' => 'categories'], function () {
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::get('/{id}', [CategoryController::class, 'show']);
+});
+
 // Admin Routes - Protected by auth + admin middleware
 Route::group(['prefix' => 'admin/products'], function () {
     Route::get('/', [ProductController::class, 'index']);
@@ -36,4 +43,14 @@ Route::group(['prefix' => 'admin/products'], function () {
     Route::post('/{id}', [ProductController::class, 'update']);
     Route::delete('/{id}', [ProductController::class, 'destroy']);
     Route::delete('/images/{imageId}', [ProductController::class, 'deleteImage']);
+});
+
+// Admin Category Routes - Protected by auth + admin middleware
+Route::group(['prefix' => 'admin/categories'], function () {
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::get('/{id}', [CategoryController::class, 'show']);
+    Route::post('/', [CategoryController::class, 'store']);
+    Route::put('/{id}', [CategoryController::class, 'update']);
+    Route::post('/{id}', [CategoryController::class, 'update']);
+    Route::delete('/{id}', [CategoryController::class, 'destroy']);
 });
