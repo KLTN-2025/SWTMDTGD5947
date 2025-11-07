@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAdminProducts } from "../lib/use-admin-products";
 import { db } from "../lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,36 +35,39 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
-  const [version, setVersion] = useState(0);
   
-  const products = db.listProducts();
-  const categories = db.listCategories();
+  // Use real API instead of mock data
+  const { products, loading, deleteProduct: apiDeleteProduct } = useAdminProducts();
+  const categories = db.listCategories(); // Keep categories from mock for now
   
   const visible = useMemo(() => {
     return products.filter(p => {
-      const matchesSearch = p.title.toLowerCase().includes(q.toLowerCase()) || 
-                           p.brand.toLowerCase().includes(q.toLowerCase());
-      const matchesCategory = categoryFilter === "all" || p.categoryId === categoryFilter;
+      const matchesSearch = p.name.toLowerCase().includes(q.toLowerCase()) || 
+                           p.skuId.toLowerCase().includes(q.toLowerCase());
+      const matchesCategory = categoryFilter === "all"; // TODO: Add category filter when categories are loaded
       const matchesStock = stockFilter === "all" || 
-                          (stockFilter === "low" && p.stock < 10) ||
-                          (stockFilter === "out" && p.stock === 0) ||
-                          (stockFilter === "available" && p.stock > 0);
+                          (stockFilter === "low" && p.quantity < 10) ||
+                          (stockFilter === "out" && p.quantity === 0) ||
+                          (stockFilter === "available" && p.quantity > 0);
       return matchesSearch && matchesCategory && matchesStock;
     });
   }, [products, q, categoryFilter, stockFilter]);
 
-  const remove = (id: string) => { 
+  const remove = async (id: number) => { 
     if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
-      db.deleteProduct(id); 
-      setVersion(v => v + 1); 
+      try {
+        await apiDeleteProduct(id);
+      } catch (error) {
+        // Error already handled by hook with toast
+      }
     }
   };
 
   // Calculate stats
   const totalProducts = products.length;
-  const lowStockProducts = products.filter(p => p.stock < 10).length;
-  const outOfStockProducts = products.filter(p => p.stock === 0).length;
-  const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+  const lowStockProducts = products.filter(p => p.quantity < 10).length;
+  const outOfStockProducts = products.filter(p => p.quantity === 0).length;
+  const totalValue = products.reduce((sum, p) => sum + (p.basePrice * p.quantity), 0);
 
   return (
     <div className="space-y-6">
@@ -218,13 +222,19 @@ export default function Products() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {viewMode === "table" ? (
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+              <p className="mt-4 text-gray-500">Đang tải dữ liệu...</p>
+            </div>
+          )}
+          {!loading && viewMode === "table" && (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Sản phẩm</TableHead>
-                    <TableHead>Thương hiệu</TableHead>
+                    <TableHead>SKU</TableHead>
                     <TableHead>Danh mục</TableHead>
                     <TableHead>Giá bán</TableHead>
                     <TableHead>Tồn kho</TableHead>
@@ -239,41 +249,40 @@ export default function Products() {
                       <TableRow key={p.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            {p.images[0] ? (
-                              <img src={p.images[0]} alt={p.title} className="h-12 w-12 rounded-lg object-cover" />
+                            {p.images[0]?.url ? (
+                              <img 
+                                src={`http://localhost:8009/${p.images[0].url}`} 
+                                alt={p.name} 
+                                className="h-12 w-12 rounded-lg object-cover" 
+                              />
                             ) : (
                               <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
                                 <Package className="h-6 w-6 text-gray-400" />
                               </div>
                             )}
                             <div>
-                              <div className="font-medium">{p.title}</div>
-                              <div className="text-sm text-gray-500">SKU: {p.id}</div>
+                              <div className="font-medium">{p.name}</div>
+                              <div className="text-sm text-gray-500">{p.description?.substring(0, 50) || 'Không có mô tả'}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-600">{p.brand}</TableCell>
+                        <TableCell className="text-gray-600">{p.skuId}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{c?.name || "—"}</Badge>
+                          <Badge variant="outline">{p.categories?.[0]?.name || "—"}</Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {p.price.toLocaleString("vi-VN")}₫
-                          {p.discountPercentage > 0 && (
-                            <Badge variant="destructive" className="ml-2 text-xs">
-                              -{p.discountPercentage}%
-                            </Badge>
-                          )}
+                          {p.basePrice.toLocaleString("vi-VN")}₫
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{p.stock}</div>
+                          <div className="font-medium">{p.quantity}</div>
                         </TableCell>
                         <TableCell>
                           <Badge variant={
-                            p.stock === 0 ? "destructive" : 
-                            p.stock < 10 ? "secondary" : "outline"
+                            p.status === 'SOLD_OUT' ? "destructive" : 
+                            p.quantity < 10 ? "secondary" : "outline"
                           }>
-                            {p.stock === 0 ? "Hết hàng" : 
-                             p.stock < 10 ? "Sắp hết" : "Còn hàng"}
+                            {p.status === 'SOLD_OUT' ? "Hết hàng" : 
+                             p.quantity < 10 ? "Sắp hết" : "Còn hàng"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -299,7 +308,8 @@ export default function Products() {
                 </TableBody>
               </Table>
             </div>
-          ) : (
+          )}
+          {!loading && viewMode === "grid" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {visible.map(p => {
                 const c = categories.find(x => x.id === p.categoryId);
@@ -365,7 +375,7 @@ export default function Products() {
             </div>
           )}
           
-          {visible.length === 0 && (
+          {!loading && visible.length === 0 && (
             <div className="text-center py-12">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy sản phẩm</h3>

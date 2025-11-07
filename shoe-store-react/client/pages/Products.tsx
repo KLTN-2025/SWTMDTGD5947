@@ -1,38 +1,42 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchProducts } from "@/lib/api";
-import type { Product, ProductsQuery } from "@/lib/api";
+import { useProductSearch } from "@/hooks/useProducts";
+import type { Product, ProductSearchParams } from "@/lib/api-types";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Layout } from "@/components/layout/Layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { productApi } from "@/lib/product-api";
 
-const BRANDS = ["Nike","Adidas","Puma","Converse","Vans","New Balance","Reebok","Asics","Oce"];
-const TYPES = ["sneaker","thể thao","công sở","boot"];
-const COLORS = ["Đen","Trắng","Xám","Đỏ","Xanh dương","Xanh lá","Vàng","Nâu","Be"];
+// These would ideally come from your categories API
+const STATUSES = [
+  { value: "IN_STOCK", label: "Còn hàng" },
+  { value: "SOLD_OUT", label: "Hết hàng" },
+  { value: "PRE_SALE", label: "Đặt trước" }
+];
 
 export default function ProductsPage() {
   const [sp, setSp] = useSearchParams();
+  const { products, pagination, loading, error, searchProducts } = useProductSearch();
+  const [searchInput, setSearchInput] = useState(sp.get("search") || "");
 
-  const query: ProductsQuery = useMemo(() => ({
-    search: sp.get("search") || undefined,
-    brand: sp.get("brand") || undefined,
-    type: sp.get("type") || undefined,
-    color: sp.get("color") || undefined,
-    size: sp.get("size") ? Number(sp.get("size")) : undefined,
-    minPrice: sp.get("minPrice") ? Number(sp.get("minPrice")) : undefined,
-    maxPrice: sp.get("maxPrice") ? Number(sp.get("maxPrice")) : undefined,
+  const searchParams: ProductSearchParams = useMemo(() => ({
+    keyword: sp.get("search") || undefined,
+    status: (sp.get("status") as any) || undefined,
+    min_price: sp.get("minPrice") ? Number(sp.get("minPrice")) : undefined,
+    max_price: sp.get("maxPrice") ? Number(sp.get("maxPrice")) : undefined,
     page: sp.get("page") ? Number(sp.get("page")) : 1,
-    limit: sp.get("limit") ? Number(sp.get("limit")) : 12,
+    per_page: sp.get("limit") ? Number(sp.get("limit")) : 12,
+    sort_by: (sp.get("sortBy") as any) || 'createdAt',
+    sort_order: (sp.get("sortOrder") as any) || 'desc',
   }), [sp]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["products", query],
-    queryFn: () => fetchProducts(query),
-  });
+  // Search products when params change
+  useMemo(() => {
+    searchProducts(searchParams);
+  }, [searchParams]);
 
   const setParam = (k: string, v?: string | number) => {
     const next = new URLSearchParams(sp);
@@ -43,8 +47,12 @@ export default function ProductsPage() {
 
   const page = Number(sp.get("page") || 1);
   const limit = Number(sp.get("limit") || 12);
-  const total = data?.total || 0;
+  const total = pagination?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const handleSearch = () => {
+    setParam("search", searchInput);
+  };
 
   return (
     <Layout>
@@ -55,35 +63,28 @@ export default function ProductsPage() {
             <p className="text-muted-foreground">Tìm kiếm và lọc giày theo nhu cầu của bạn.</p>
           </div>
           <div className="hidden md:flex items-center gap-2">
-            <Input placeholder="Tìm kiếm" defaultValue={query.search} onKeyDown={(e) => { if (e.key === "Enter") setParam("search", (e.target as HTMLInputElement).value); }} />
-            <Button onClick={() => setParam("search", (document.activeElement as HTMLInputElement)?.value || query.search || "")}>Tìm</Button>
+            <Input 
+              placeholder="Tìm kiếm" 
+              value={searchInput} 
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }} 
+            />
+            <Button onClick={handleSearch}>Tìm</Button>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           <aside className="md:col-span-3 space-y-6">
             <div>
-              <h3 className="font-semibold mb-3">Thương hiệu</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {BRANDS.map((b) => (
-                  <Button key={b} variant={query.brand === b ? "default" : "secondary"} onClick={() => setParam("brand", query.brand === b ? undefined : b)}>{b}</Button>
-                ))}
-              </div>
-            </div>
-            <Separator />
-            <div>
-              <h3 className="font-semibold mb-3">Loại giày</h3>
+              <h3 className="font-semibold mb-3">Trạng thái</h3>
               <div className="flex flex-wrap gap-2">
-                {TYPES.map((t) => (
-                  <Button key={t} variant={query.type === t ? "default" : "secondary"} onClick={() => setParam("type", query.type === t ? undefined : t)}>{t}</Button>
-                ))}
-              </div>
-            </div>
-            <Separator />
-            <div>
-              <h3 className="font-semibold mb-3">Màu sắc</h3>
-              <div className="flex flex-wrap gap-2">
-                {COLORS.map((c) => (
-                  <Button key={c} variant={query.color === c ? "default" : "secondary"} onClick={() => setParam("color", query.color === c ? undefined : c)}>{c}</Button>
+                {STATUSES.map((status) => (
+                  <Button 
+                    key={status.value} 
+                    variant={searchParams.status === status.value ? "default" : "secondary"} 
+                    onClick={() => setParam("status", searchParams.status === status.value ? undefined : status.value)}
+                  >
+                    {status.label}
+                  </Button>
                 ))}
               </div>
             </div>
@@ -91,31 +92,76 @@ export default function ProductsPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="minPrice">Giá từ</Label>
-                <Input id="minPrice" type="number" defaultValue={query.minPrice} onBlur={(e) => setParam("minPrice", e.target.value ? Number(e.target.value) : undefined)} />
+                <Input 
+                  id="minPrice" 
+                  type="number" 
+                  defaultValue={searchParams.min_price} 
+                  onBlur={(e) => setParam("minPrice", e.target.value ? Number(e.target.value) : undefined)} 
+                />
               </div>
               <div>
                 <Label htmlFor="maxPrice">Đến</Label>
-                <Input id="maxPrice" type="number" defaultValue={query.maxPrice} onBlur={(e) => setParam("maxPrice", e.target.value ? Number(e.target.value) : undefined)} />
+                <Input 
+                  id="maxPrice" 
+                  type="number" 
+                  defaultValue={searchParams.max_price} 
+                  onBlur={(e) => setParam("maxPrice", e.target.value ? Number(e.target.value) : undefined)} 
+                />
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <h3 className="font-semibold mb-3">Sắp xếp</h3>
+              <div className="space-y-2">
+                <Button 
+                  variant={searchParams.sort_by === 'name' ? "default" : "secondary"} 
+                  onClick={() => setParam("sortBy", "name")}
+                  className="w-full justify-start"
+                >
+                  Theo tên
+                </Button>
+                <Button 
+                  variant={searchParams.sort_by === 'basePrice' ? "default" : "secondary"} 
+                  onClick={() => setParam("sortBy", "basePrice")}
+                  className="w-full justify-start"
+                >
+                  Theo giá
+                </Button>
+                <Button 
+                  variant={searchParams.sort_by === 'createdAt' ? "default" : "secondary"} 
+                  onClick={() => setParam("sortBy", "createdAt")}
+                  className="w-full justify-start"
+                >
+                  Mới nhất
+                </Button>
               </div>
             </div>
           </aside>
 
           <div className="md:col-span-9">
-            {isLoading && <div className="py-20 text-center">Đang tải...</div>}
-            {error && <div className="py-20 text-center text-destructive">Lỗi tải dữ liệu.</div>}
-            {!isLoading && !error && (
+            {loading && <div className="py-20 text-center">Đang tải...</div>}
+            {error && <div className="py-20 text-center text-destructive">{error}</div>}
+            {!loading && !error && (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                {data?.products.map((p: Product) => (
-                  <ProductCard key={p.id} p={p} />
+                {products.map((product: Product) => (
+                  <ProductCard key={product.id} p={product} />
                 ))}
               </div>
             )}
 
-            <div className="mt-8 flex items-center justify-center gap-2">
-              <Button variant="secondary" disabled={page <= 1} onClick={() => setParam("page", page - 1)}>Trang trước</Button>
-              <span className="text-sm">Trang {page} / {totalPages}</span>
-              <Button variant="secondary" disabled={page >= totalPages} onClick={() => setParam("page", page + 1)}>Trang sau</Button>
-            </div>
+            {!loading && !error && products.length === 0 && (
+              <div className="py-20 text-center text-muted-foreground">
+                Không tìm thấy sản phẩm nào.
+              </div>
+            )}
+
+            {pagination && pagination.total > 0 && (
+              <div className="mt-8 flex items-center justify-center gap-2">
+                <Button variant="secondary" disabled={page <= 1} onClick={() => setParam("page", page - 1)}>Trang trước</Button>
+                <span className="text-sm">Trang {page} / {totalPages}</span>
+                <Button variant="secondary" disabled={page >= totalPages} onClick={() => setParam("page", page + 1)}>Trang sau</Button>
+              </div>
+            )}
           </div>
         </div>
       </section>

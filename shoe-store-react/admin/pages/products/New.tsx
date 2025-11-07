@@ -1,49 +1,194 @@
 import { useState } from "react";
-import { db } from "../../lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
+import { useAdminProducts } from "../../lib/use-admin-products";
+import { toast } from "sonner";
+import { Upload, X } from "lucide-react";
 
 export default function ProductNew() {
   const nav = useNavigate();
-  const categories = db.listCategories();
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState<number>(0);
-  const [stock, setStock] = useState<number>(0);
-  const [brand, setBrand] = useState("");
-  const [images, setImages] = useState<string>("");
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
-  const [discountPercentage, setDiscount] = useState<number>(0);
+  const { createProduct } = useAdminProducts();
+  
+  const [skuId, setSkuId] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [basePrice, setBasePrice] = useState<number>(0);
+  const [quantity, setQuantity] = useState<number>(0);
+  const [status, setStatus] = useState<'IN_STOCK' | 'SOLD_OUT' | 'PRE_SALE'>('IN_STOCK');
+  const [images, setImages] = useState<File[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const save = () => {
-    if (!title || price <= 0) return;
-    db.addProduct({ title, price, stock, brand, images: images.split(",").map(s => s.trim()).filter(Boolean), categoryId, discountPercentage, rating: 4.5 });
-    nav("/admin/products");
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setImages(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const save = async () => {
+    if (!skuId || !name || basePrice <= 0 || quantity < 0) {
+      toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await createProduct({
+        skuId,
+        name,
+        description,
+        basePrice,
+        quantity,
+        status,
+        images,
+      });
+      toast.success("Tạo sản phẩm thành công");
+      nav("/admin/products");
+    } catch (error: any) {
+      toast.error(error.message || "Tạo sản phẩm thất bại");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="space-y-4 max-w-2xl">
-      <h1 className="text-2xl font-bold">Thêm sản phẩm</h1>
-      <Input placeholder="Tên" value={title} onChange={e => setTitle(e.target.value)} />
-      <div className="grid grid-cols-2 gap-2">
-        <Input type="number" placeholder="Giá" value={price} onChange={e => setPrice(Number(e.target.value))} />
-        <Input type="number" placeholder="Số lượng" value={stock} onChange={e => setStock(Number(e.target.value))} />
+    <div className="space-y-6 max-w-4xl">
+      <div>
+        <h1 className="text-3xl font-bold">Thêm sản phẩm mới</h1>
+        <p className="text-gray-600">Điền thông tin sản phẩm và upload ảnh</p>
       </div>
-      <Input placeholder="Thương hiệu" value={brand} onChange={e => setBrand(e.target.value)} />
-      <Input placeholder="URL hình (phân tách bằng dấu phẩy)" value={images} onChange={e => setImages(e.target.value)} />
-      <div className="grid grid-cols-2 gap-2">
-        <Select value={categoryId} onValueChange={(v) => setCategoryId(v)}>
-          <SelectTrigger><SelectValue placeholder="Danh mục" /></SelectTrigger>
-          <SelectContent>
-            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input type="number" placeholder="Khuyến mãi %" value={discountPercentage} onChange={e => setDiscount(Number(e.target.value))} />
-      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Thông tin cơ bản</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>SKU ID *</Label>
+              <Input 
+                placeholder="VD: SHOE-001" 
+                value={skuId} 
+                onChange={e => setSkuId(e.target.value)} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Trạng thái *</Label>
+              <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IN_STOCK">Còn hàng</SelectItem>
+                  <SelectItem value="SOLD_OUT">Hết hàng</SelectItem>
+                  <SelectItem value="PRE_SALE">Đặt trước</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tên sản phẩm *</Label>
+            <Input 
+              placeholder="VD: Giày thể thao Nike Air Max" 
+              value={name} 
+              onChange={e => setName(e.target.value)} 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Mô tả</Label>
+            <Textarea 
+              placeholder="Mô tả chi tiết về sản phẩm..." 
+              value={description} 
+              onChange={e => setDescription(e.target.value)}
+              rows={4}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Giá bán *</Label>
+              <Input 
+                type="number" 
+                placeholder="0" 
+                value={basePrice || ''} 
+                onChange={e => setBasePrice(Number(e.target.value))} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Số lượng *</Label>
+              <Input 
+                type="number" 
+                placeholder="0" 
+                value={quantity || ''} 
+                onChange={e => setQuantity(Number(e.target.value))} 
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Hình ảnh sản phẩm</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="border-2 border-dashed rounded-lg p-6 text-center">
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageChange}
+              className="hidden"
+              id="image-upload"
+            />
+            <label htmlFor="image-upload" className="cursor-pointer">
+              <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <p className="text-sm text-gray-600">Click để chọn ảnh hoặc kéo thả vào đây</p>
+              <p className="text-xs text-gray-400 mt-2">Hỗ trợ: JPG, PNG, GIF (tối đa 5MB)</p>
+            </label>
+          </div>
+
+          {images.length > 0 && (
+            <div className="grid grid-cols-4 gap-4">
+              {images.map((file, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                  <button
+                    onClick={() => removeImage(index)}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{file.name}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="flex gap-2">
-        <Button onClick={save}>Lưu</Button>
-        <Button variant="outline" onClick={() => nav(-1)}>Hủy</Button>
+        <Button onClick={save} disabled={loading}>
+          {loading ? "Đang lưu..." : "Lưu sản phẩm"}
+        </Button>
+        <Button variant="outline" onClick={() => nav(-1)} disabled={loading}>
+          Hủy
+        </Button>
       </div>
     </div>
   );
