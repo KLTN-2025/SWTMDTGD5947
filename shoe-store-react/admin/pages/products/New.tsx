@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useAdminProducts } from "../../lib/use-admin-products";
+import { useAdminCategories } from "../../lib/use-admin-categories";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ProductNew() {
   const nav = useNavigate();
   const { createProduct } = useAdminProducts();
+  const { categories } = useAdminCategories();
   
   const [skuId, setSkuId] = useState("");
   const [name, setName] = useState("");
@@ -20,6 +23,7 @@ export default function ProductNew() {
   const [basePrice, setBasePrice] = useState<number>(0);
   const [quantity, setQuantity] = useState<number>(0);
   const [status, setStatus] = useState<'IN_STOCK' | 'SOLD_OUT' | 'PRE_SALE'>('IN_STOCK');
+  const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,12 +53,14 @@ export default function ProductNew() {
         basePrice,
         quantity,
         status,
+        category_ids: categoryIds,
         images,
       });
-      toast.success("Tạo sản phẩm thành công");
+      // Hook already shows toast, just navigate
       nav("/admin/products");
     } catch (error: any) {
-      toast.error(error.message || "Tạo sản phẩm thất bại");
+      // Hook already shows error toast
+      console.error('Create product error:', error);
     } finally {
       setLoading(false);
     }
@@ -134,6 +140,41 @@ export default function ProductNew() {
                 onChange={e => setQuantity(Number(e.target.value))} 
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Danh mục sản phẩm</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {categories.length === 0 ? (
+              <p className="text-sm text-gray-500">Chưa có danh mục nào</p>
+            ) : (
+              categories.map((category) => (
+                <div key={category.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`category-${category.id}`}
+                    checked={categoryIds.includes(category.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setCategoryIds([...categoryIds, category.id]);
+                      } else {
+                        setCategoryIds(categoryIds.filter(id => id !== category.id));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`category-${category.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {category.name}
+                  </label>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

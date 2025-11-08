@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminProductApi, AdminProduct, CreateProductRequest, UpdateProductRequest } from './admin-api';
 import { toast } from 'sonner';
+import { getErrorMessage } from './error-handler';
 
 export function useAdminProducts() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -25,7 +26,7 @@ export function useAdminProducts() {
         }
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể tải danh sách sản phẩm';
+      const errorMsg = getErrorMessage(err, 'Không thể tải danh sách sản phẩm');
       setError(errorMsg);
       toast.error(errorMsg);
       setProducts([]); // Set empty array on error
@@ -35,18 +36,32 @@ export function useAdminProducts() {
   }, []);
 
   // Search products
-  const searchProducts = useCallback(async (query: string) => {
+  const searchProducts = useCallback(async (params: Record<string, string>) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await adminProductApi.searchProducts(query);
+      const response = await adminProductApi.searchProducts(params);
+      console.log('Search response:', response); // Debug log
       if (response.data) {
-        setProducts(response.data);
+        // Handle both array and object responses
+        const data: any = response.data;
+        console.log('Search data:', data); // Debug log
+        if (Array.isArray(data)) {
+          console.log('Setting products (array):', data.length);
+          setProducts(data);
+        } else if (data.products && Array.isArray(data.products)) {
+          console.log('Setting products (object):', data.products.length);
+          setProducts(data.products);
+        } else {
+          console.log('No products found in response');
+          setProducts([]);
+        }
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể tìm kiếm sản phẩm';
+      const errorMsg = getErrorMessage(err, 'Không thể tìm kiếm sản phẩm');
       setError(errorMsg);
       toast.error(errorMsg);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -62,7 +77,7 @@ export function useAdminProducts() {
         return response.data;
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể tạo sản phẩm';
+      const errorMsg = getErrorMessage(err, 'Không thể tạo sản phẩm');
       toast.error(errorMsg);
       throw err;
     }
@@ -78,7 +93,7 @@ export function useAdminProducts() {
         return response.data;
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể cập nhật sản phẩm';
+      const errorMsg = getErrorMessage(err, 'Không thể cập nhật sản phẩm');
       toast.error(errorMsg);
       throw err;
     }
@@ -91,7 +106,7 @@ export function useAdminProducts() {
       setProducts(prev => prev.filter(p => p.id !== id));
       toast.success('Xóa sản phẩm thành công');
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể xóa sản phẩm';
+      const errorMsg = getErrorMessage(err, 'Không thể xóa sản phẩm');
       toast.error(errorMsg);
       throw err;
     }
@@ -105,7 +120,7 @@ export function useAdminProducts() {
       // Refresh products to get updated data
       await fetchProducts();
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể xóa ảnh';
+      const errorMsg = getErrorMessage(err, 'Không thể xóa ảnh');
       toast.error(errorMsg);
       throw err;
     }
@@ -146,7 +161,7 @@ export function useAdminProduct(id: number | null) {
         setProduct(response.data);
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'Không thể tải thông tin sản phẩm';
+      const errorMsg = getErrorMessage(err, 'Không thể tải thông tin sản phẩm');
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAdminProducts } from "../lib/use-admin-products";
-import { db } from "../lib/store";
+import { useAdminCategories } from "../lib/use-admin-categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,22 +36,39 @@ export default function Products() {
   const [stockFilter, setStockFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   
-  // Use real API instead of mock data
-  const { products, loading, deleteProduct: apiDeleteProduct } = useAdminProducts();
-  const categories = db.listCategories(); // Keep categories from mock for now
+  // Use real API with server-side filtering
+  const { products, loading, deleteProduct: apiDeleteProduct, searchProducts } = useAdminProducts();
+  const { categories } = useAdminCategories();
   
-  const visible = useMemo(() => {
-    return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(q.toLowerCase()) || 
-                           p.skuId.toLowerCase().includes(q.toLowerCase());
-      const matchesCategory = categoryFilter === "all"; // TODO: Add category filter when categories are loaded
-      const matchesStock = stockFilter === "all" || 
-                          (stockFilter === "low" && p.quantity < 10) ||
-                          (stockFilter === "out" && p.quantity === 0) ||
-                          (stockFilter === "available" && p.quantity > 0);
-      return matchesSearch && matchesCategory && matchesStock;
-    });
-  }, [products, q, categoryFilter, stockFilter]);
+  // Server-side search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Build search params - create fresh object each time
+      const params: Record<string, string> = {};
+      
+      if (q && q.trim()) params.keyword = q.trim();
+      if (categoryFilter !== "all") params.category_id = categoryFilter;
+      
+      // Map stock filter to status
+      if (stockFilter === "out") {
+        params.status = "SOLD_OUT";
+      } else if (stockFilter === "available") {
+        params.status = "IN_STOCK";
+      }
+      // Note: "low" stock can't be filtered by status, need quantity check
+      
+      // Call search API with params object
+      console.log('Search params:', params);
+      searchProducts(params);
+    }, 500); // Debounce 500ms
+    
+    return () => clearTimeout(timer);
+  }, [q, categoryFilter, stockFilter]);
+  
+  // Client-side filter for "low stock" since backend doesn't support it
+  const visible = stockFilter === "low" 
+    ? products.filter(p => p.quantity < 10 && p.quantity > 0)
+    : products;
 
   const remove = async (id: number) => { 
     if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
@@ -177,7 +194,7 @@ export default function Products() {
               <SelectContent>
                 <SelectItem value="all">Tất cả danh mục</SelectItem>
                 {categories.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -244,31 +261,31 @@ export default function Products() {
                 </TableHeader>
                 <TableBody>
                   {visible.map(p => {
-                    const c = categories.find(x => x.id === p.categoryId);
                     return (
                       <TableRow key={p.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            {p.images[0]?.url ? (
+                            {p.images && p.images.length > 0 && (
                               <img 
                                 src={`http://localhost:8009/${p.images[0].url}`} 
                                 alt={p.name} 
-                                className="h-12 w-12 rounded-lg object-cover" 
+                                className="w-10 h-10 object-cover rounded" 
                               />
-                            ) : (
-                              <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
-                                <Package className="h-6 w-6 text-gray-400" />
-                              </div>
                             )}
-                            <div>
-                              <div className="font-medium">{p.name}</div>
-                              <div className="text-sm text-gray-500">{p.description?.substring(0, 50) || 'Không có mô tả'}</div>
-                            </div>
+                            <span>{p.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-600">{p.skuId}</TableCell>
+                        <TableCell>{p.skuId}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{p.categories?.[0]?.name || "—"}</Badge>
+                          {p.categories && p.categories.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {p.categories.map(cat => (
+                                <Badge key={cat.id} variant="outline" className="text-xs">
+                                  {cat.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : "—"}
                         </TableCell>
                         <TableCell className="font-medium">
                           {p.basePrice.toLocaleString("vi-VN")}₫
@@ -312,43 +329,43 @@ export default function Products() {
           {!loading && viewMode === "grid" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {visible.map(p => {
-                const c = categories.find(x => x.id === p.categoryId);
                 return (
                   <Card key={p.id} className="overflow-hidden">
                     <div className="aspect-square relative">
-                      {p.images[0] ? (
-                        <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
+                      {p.images && p.images.length > 0 ? (
+                        <img 
+                          src={`http://localhost:8009/${p.images[0].url}`} 
+                          alt={p.name} 
+                          className="w-full h-full object-cover" 
+                        />
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                           <Package className="h-12 w-12 text-gray-400" />
                         </div>
                       )}
-                      {p.discountPercentage > 0 && (
-                        <Badge className="absolute top-2 left-2 bg-red-500">
-                          -{p.discountPercentage}%
-                        </Badge>
-                      )}
                       <Badge 
                         className="absolute top-2 right-2"
                         variant={
-                          p.stock === 0 ? "destructive" : 
-                          p.stock < 10 ? "secondary" : "outline"
+                          p.status === 'SOLD_OUT' ? "destructive" : 
+                          p.quantity < 10 ? "secondary" : "outline"
                         }
                       >
-                        {p.stock === 0 ? "Hết hàng" : 
-                         p.stock < 10 ? "Sắp hết" : "Còn hàng"}
+                        {p.status === 'SOLD_OUT' ? "Hết hàng" : 
+                         p.quantity < 10 ? "Sắp hết" : "Còn hàng"}
                       </Badge>
                     </div>
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <h3 className="font-medium line-clamp-2">{p.title}</h3>
+                        <h3 className="font-medium line-clamp-2">{p.name}</h3>
                         <div className="flex items-center justify-between text-sm text-gray-500">
-                          <span>{p.brand}</span>
-                          <Badge variant="outline" className="text-xs">{c?.name}</Badge>
+                          <span className="text-xs text-gray-400">SKU: {p.skuId}</span>
+                          {p.categories && p.categories.length > 0 && (
+                            <Badge variant="outline" className="text-xs">{p.categories[0].name}</Badge>
+                          )}
                         </div>
                         <div className="flex items-center justify-between">
-                          <div className="font-bold text-lg">{p.price.toLocaleString("vi-VN")}₫</div>
-                          <div className="text-sm text-gray-500">SL: {p.stock}</div>
+                          <div className="font-bold text-lg">{p.basePrice.toLocaleString("vi-VN")}₫</div>
+                          <div className="text-sm text-gray-500">SL: {p.quantity}</div>
                         </div>
                         <div className="flex items-center gap-2 pt-2">
                           <Link to={`/admin/products/${p.id}/view`} className="flex-1">

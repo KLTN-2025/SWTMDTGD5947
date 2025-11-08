@@ -207,16 +207,20 @@ class ProductService
     private function performSearch($data)
     {
         try {
+            // Debug log
+            Log::info('Search params received:', $data);
+            
             $query = Product::query()->with(['images', 'categories', 'variants.size']);
 
             // Tìm kiếm theo từ khóa
             if (!empty($data['keyword'])) {
                 $keyword = $data['keyword'];
+                Log::info('Searching with keyword:', ['keyword' => $keyword]);
                 $query->where(function ($q) use ($keyword) {
-                    $q->where('name', 'like', "%{$keyword}%")
-                        ->orWhere('skuId', 'like', "%{$keyword}%")
-                        ->orWhere('description', 'like', "%{$keyword}%");
+                    $q->where('name', 'like', "%{$keyword}%");
                 });
+            } else {
+                Log::info('No keyword provided, returning all products');
             }
 
             // Lọc theo danh mục

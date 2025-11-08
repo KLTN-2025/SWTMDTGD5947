@@ -190,7 +190,12 @@ class ApiError extends Error {
     msgCode: string;
     message: string | Record<string, string[]>;
   }) {
-    super(typeof errorData.message === 'string' ? errorData.message : 'API Error');
+    // Use the actual API message or first validation error
+    const displayMessage = typeof errorData.message === 'string' 
+      ? errorData.message 
+      : Object.values(errorData.message)[0]?.[0] || 'Lỗi từ server';
+    
+    super(displayMessage);
     this.name = 'ApiError';
     this.code = errorData.code;
     this.status = errorData.status;
@@ -214,6 +219,17 @@ class ApiError extends Error {
       return errors[firstKey]?.[0] || null;
     }
     return null;
+  }
+
+  // Helper to get all validation errors as a formatted string
+  getAllValidationErrors(): string {
+    const errors = this.getValidationErrors();
+    if (errors) {
+      return Object.entries(errors)
+        .map(([field, messages]) => messages.join(', '))
+        .join('; ');
+    }
+    return this.message;
   }
 }
 
