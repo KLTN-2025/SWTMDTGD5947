@@ -1,36 +1,79 @@
 import { apiClient } from './api-client';
-import {
-  ApiResponse,
-  Product,
-  ProductsData,
-  ProductSearchParams,
-} from './api-types';
+import { ApiResponse } from './api-types';
 
-/**
- * Public Product API for Client
- * Only read-only operations (GET)
- * Admin operations are in admin/lib/admin-api.ts
- */
-export class ProductApi {
-  // Get all products with pagination (public)
-  async getProducts(params?: { per_page?: number; page?: number }): Promise<ApiResponse<ProductsData>> {
-    return apiClient.get<ProductsData>('/products', params);
+// Product Types (Public API)
+export interface ProductImage {
+  id: number;
+  productId: number;
+  url: string;
+  fullUrl?: string; // From Laravel accessor
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductCategory {
+  id: number;
+  name: string;
+  parentId?: number | null;
+}
+
+export interface Product {
+  id: number;
+  skuId: string;
+  name: string;
+  status: 'SOLD_OUT' | 'IN_STOCK' | 'PRE_SALE';
+  description?: string;
+  basePrice: number;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  images: ProductImage[];
+  categories?: ProductCategory[];
+  variants?: any[];
+}
+
+export interface ProductSearchParams {
+  keyword?: string;
+  status?: 'SOLD_OUT' | 'IN_STOCK' | 'PRE_SALE';
+  category_id?: number;
+  min_price?: number;
+  max_price?: number;
+  page?: number;
+  per_page?: number;
+  sort_by?: 'createdAt' | 'basePrice' | 'name';
+  sort_order?: 'asc' | 'desc';
+}
+
+export interface PaginationMeta {
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+  from: number;
+  to: number;
+}
+
+export interface ProductListResponse {
+  products: Product[];
+  pagination: PaginationMeta;
+}
+
+class ProductApi {
+  private baseUrl = '/products';
+
+  // Get all products (with pagination)
+  async getProducts(params?: ProductSearchParams): Promise<ApiResponse<ProductListResponse>> {
+    return apiClient.get<ProductListResponse>(this.baseUrl, params as any);
   }
 
-  // Get product by ID (public)
+  // Search products
+  async searchProducts(params: ProductSearchParams): Promise<ApiResponse<ProductListResponse>> {
+    return apiClient.get<ProductListResponse>(`${this.baseUrl}/search`, params as any);
+  }
+
+  // Get single product
   async getProduct(id: number): Promise<ApiResponse<Product>> {
-    return apiClient.get<Product>(`/products/${id}`);
-  }
-
-  // Search products with filters (public)
-  async searchProducts(params: ProductSearchParams): Promise<ApiResponse<ProductsData>> {
-    return apiClient.get<ProductsData>('/products/search', params);
-  }
-
-  // Helper method to get product image URL
-  getImageUrl(imagePath: string): string {
-    const baseUrl = apiClient['baseURL'].replace('/api', '');
-    return `${baseUrl}/${imagePath}`;
+    return apiClient.get<Product>(`${this.baseUrl}/${id}`);
   }
 }
 

@@ -2,7 +2,8 @@ import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { fetchFeaturedProducts, fetchNewProducts } from "@/lib/api";
+import { productApi } from "@/lib/product-api";
+import { ProductCard } from "@/components/product/ProductCard";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   ShoppingBag, 
@@ -20,14 +21,32 @@ import {
 } from "lucide-react";
 
 export default function Index() {
-  const { data: featuredData } = useQuery({ 
-    queryKey: ["featured-products"], 
-    queryFn: () => fetchFeaturedProducts(8) 
+  const { data: featuredData, isLoading: featuredLoading } = useQuery({
+    queryKey: ['featured-products'],
+    queryFn: async () => {
+      const response = await productApi.getProducts({
+        per_page: 8,
+        sort_by: 'createdAt',
+        sort_order: 'desc'
+      });
+      return response.data;
+    }
   });
-  const { data: newData } = useQuery({ 
-    queryKey: ["new-products"], 
-    queryFn: () => fetchNewProducts(6) 
+
+  const { data: newData, isLoading: newLoading } = useQuery({
+    queryKey: ['new-products'],
+    queryFn: async () => {
+      const response = await productApi.getProducts({
+        per_page: 6,
+        sort_by: 'createdAt',
+        sort_order: 'desc'
+      });
+      return response.data;
+    }
   });
+
+  const featuredProducts = featuredData?.products || [];
+  const newProducts = newData?.products || [];
   const navigate = useNavigate();
 
   return (
@@ -127,53 +146,23 @@ export default function Index() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {featuredData?.products.map((p, index) => (
-            <Link 
-              key={p.id} 
-              to={`/products/${p.id}`} 
-              className="group rounded-2xl overflow-hidden border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-            >
-              <div className="aspect-square overflow-hidden relative">
-                <img 
-                  src={p.images[0] || p.thumbnail} 
-                  alt={p.title} 
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                />
-                {p.discountPercentage && (
-                  <Badge className="absolute top-2 left-2 bg-red-500 text-white">
-                    -{Math.round(p.discountPercentage)}%
-                  </Badge>
-                )}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button size="sm" variant="secondary" className="h-8 w-8 p-0">
-                    <Heart className="w-4 h-4" />
-                  </Button>
-                </div>
+        {featuredLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-square bg-muted animate-pulse rounded-lg" />
+                <div className="h-4 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
               </div>
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs text-muted-foreground uppercase font-medium">{p.brand}</div>
-                  {p.rating && (
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-xs text-muted-foreground">{p.rating}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="font-medium line-clamp-1 mb-2">{p.title}</div>
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-primary">{p.price.toLocaleString("vi-VN")}₫</div>
-                  {p.stock && p.stock < 10 && (
-                    <Badge variant="outline" className="text-xs">
-                      Còn {p.stock}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* New Products */}
@@ -198,57 +187,23 @@ export default function Index() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {newData?.products.map((p) => (
-            <Link 
-              key={p.id} 
-              to={`/products/${p.id}`} 
-              className="group rounded-2xl overflow-hidden border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 relative"
-            >
-              <div className="aspect-square overflow-hidden relative">
-                <img 
-                  src={p.images[0] || p.thumbnail} 
-                  alt={p.title} 
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                />
-                <Badge className="absolute top-2 left-2 bg-green-500 text-white">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  NEW
-                </Badge>
-                {p.discountPercentage && (
-                  <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                    -{Math.round(p.discountPercentage)}%
-                  </Badge>
-                )}
-                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button size="sm" variant="secondary" className="h-8 w-8 p-0">
-                    <Heart className="w-4 h-4" />
-                  </Button>
-                </div>
+        {newLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-square bg-muted animate-pulse rounded-lg" />
+                <div className="h-4 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
               </div>
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs text-muted-foreground uppercase font-medium">{p.brand}</div>
-                  {p.rating && (
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-xs text-muted-foreground">{p.rating}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="font-medium line-clamp-2 text-sm mb-2">{p.title}</div>
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-green-600">{p.price.toLocaleString("vi-VN")}₫</div>
-                  {p.stock && p.stock < 20 && (
-                    <Badge variant="outline" className="text-xs">
-                      Còn {p.stock}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {newProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Categories */}

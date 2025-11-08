@@ -24,7 +24,7 @@ class UserMiddleware
         try {
             // Lấy token từ cookie
             $token = $request->cookie('token');
-            
+
             if (!$token) {
                 return response()->json([
                     'code' => HttpCode::UNAUTHORIZED,
