@@ -39,6 +39,10 @@ import CustomerNew from "../admin/pages/customers/New";
 import CustomerEdit from "../admin/pages/customers/Edit";
 import CustomerView from "../admin/pages/customers/View";
 import OrderView from "../admin/pages/orders/View";
+import AdminUsers from "../admin/pages/Users";
+import UserNew from "../admin/pages/users/new";
+import UserEdit from "../admin/pages/users/[id]";
+import UserView from "../admin/pages/users/[id]/view";
 import { useAuth } from "./state/auth";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -116,6 +120,10 @@ const App = () => (
               <Route path="/admin/customers/new" element={<AdminProtectedRoute><AdminLayout><CustomerNew /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/customers/:id" element={<AdminProtectedRoute><AdminLayout><CustomerEdit /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/customers/:id/view" element={<AdminProtectedRoute><AdminLayout><CustomerView /></AdminLayout></AdminProtectedRoute>} />
+              <Route path="/admin/users" element={<AdminProtectedRoute><AdminLayout><AdminUsers /></AdminLayout></AdminProtectedRoute>} />
+              <Route path="/admin/users/new" element={<AdminProtectedRoute><AdminLayout><UserNew /></AdminLayout></AdminProtectedRoute>} />
+              <Route path="/admin/users/:id" element={<AdminProtectedRoute><AdminLayout><UserEdit /></AdminLayout></AdminProtectedRoute>} />
+              <Route path="/admin/users/:id/view" element={<AdminProtectedRoute><AdminLayout><UserView /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/chatbot" element={<AdminProtectedRoute><AdminLayout><AdminChatbot /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/reports" element={<AdminProtectedRoute><AdminLayout><AdminReports /></AdminLayout></AdminProtectedRoute>} />
               

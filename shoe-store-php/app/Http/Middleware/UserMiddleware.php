@@ -11,11 +11,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
-class AdminMiddleware
+class UserMiddleware
 {
     /**
      * Handle an incoming request.
-     * Kiểm tra user đã đăng nhập và có role ADMIN
+     * Kiểm tra user đã đăng nhập và có role USER
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
@@ -34,6 +34,7 @@ class AdminMiddleware
                 ], HttpCode::UNAUTHORIZED);
             }
 
+            // Set token và authenticate user
             JWTAuth::setToken($token);
             $user = JWTAuth::authenticate();
 
@@ -46,18 +47,21 @@ class AdminMiddleware
                 ], HttpCode::UNAUTHORIZED);
             }
 
-            if (!$user->role || $user->role->name !== Constants::ADMIN) {
+            // Kiểm tra role USER
+            if (!$user->role || $user->role->name !== Constants::USER) {
                 return response()->json([
                     'code' => HttpCode::FORBIDDEN,
                     'status' => false,
                     'msgCode' => MsgCode::FORBIDDEN,
-                    'message' => 'Bạn không có quyền truy cập. Chỉ ADMIN mới được phép.'
+                    'message' => 'Bạn không có quyền truy cập. Chỉ USER mới được phép.'
                 ], HttpCode::FORBIDDEN);
             }
 
+            // Set user vào auth guard
             auth('api')->setUser($user);
 
             return $next($request);
+
         } catch (JWTException $e) {
             return response()->json([
                 'code' => HttpCode::UNAUTHORIZED,
