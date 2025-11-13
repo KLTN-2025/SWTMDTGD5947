@@ -16,7 +16,6 @@ return new class extends Migration
             $table->unsignedBigInteger('userId')->unique();
             $table->string('phone', 20)->nullable();
             $table->string('address', 255)->nullable();
-            $table->date('dateOfBirth')->nullable();
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
             $table->timestamp('deletedAt')->nullable();

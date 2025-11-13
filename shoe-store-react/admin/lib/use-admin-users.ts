@@ -142,8 +142,11 @@ export function useAdminUser(id: number | null) {
       setLoading(true);
       setError(null);
       const response = await adminUserApi.getUser(id);
+      console.log('🔍 Raw API response:', response);
+      console.log('🔍 Response.data:', response.data);
       if (response.data) {
         setUser(response.data);
+        console.log('✅ User set in hook:', response.data);
       }
     } catch (err: any) {
       const errorMsg = getErrorMessage(err, 'Không thể tải thông tin người dùng');

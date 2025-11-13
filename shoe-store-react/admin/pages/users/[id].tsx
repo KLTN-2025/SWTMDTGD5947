@@ -15,6 +15,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Save, Loader2, UserCog, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { getImageUrl } from "@/lib/image-utils";
 
 export default function EditUser() {
   const navigate = useNavigate();
@@ -36,7 +37,6 @@ export default function EditUser() {
     isActive: true,
     phone: "",
     address: "",
-    dateOfBirth: "",
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -44,23 +44,25 @@ export default function EditUser() {
   // Load user data
   useEffect(() => {
     if (user) {
-      setFormData({
+      const newFormData = {
         name: user.name || "",
         userName: user.userName || "",
         email: user.email || "",
         password: "",
         roleId: user.roleId?.toString() || "",
         isActive: user.isActive ?? true,
-        phone: user.profile?.phone || "",
+        phone: user.profile?.phoneNumber || "",
         address: user.profile?.address || "",
-        dateOfBirth: user.profile?.dateOfBirth?.split('T')[0] || "",
-      });
+      };
+      setFormData(newFormData);
       
-      if (user.imageUrl) {
-        setImagePreview(`${import.meta.env.VITE_API_URL}/${user.imageUrl}`);
+      // Set image preview using fullImageUrl or getImageUrl
+      const imageUrl = user.fullImageUrl || getImageUrl(user.imageUrl);
+      if (imageUrl) {
+        setImagePreview(imageUrl);
       }
     }
-  }, [user]);
+  }, [user, roles]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,8 +86,29 @@ export default function EditUser() {
     
     if (!userId) return;
     
-    if (!formData.name || !formData.userName || !formData.email || !formData.roleId) {
-      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
+    // Đảm bảo user data đã được load trước khi validate
+    if (!user) {
+      toast.error("Đang tải dữ liệu, vui lòng thử lại");
+      return;
+    }
+    
+    console.log('🚀 Submitting with form data:', formData);
+    
+    // Chỉ validate nếu user đã xóa trống các field bắt buộc
+    if (!formData.name.trim()) {
+      toast.error("Họ tên không được để trống");
+      return;
+    }
+    if (!formData.userName.trim()) {
+      toast.error("Tên đăng nhập không được để trống");
+      return;
+    }
+    if (!formData.email.trim()) {
+      toast.error("Email không được để trống");
+      return;
+    }
+    if (!formData.roleId) {
+      toast.error("Vui lòng chọn vai trò");
       return;
     }
 
@@ -101,7 +124,6 @@ export default function EditUser() {
         image: imageFile || undefined,
         phone: formData.phone || undefined,
         address: formData.address || undefined,
-        dateOfBirth: formData.dateOfBirth || undefined,
       });
       navigate("/admin/users");
     } catch (error) {
@@ -236,16 +258,6 @@ export default function EditUser() {
                     placeholder="123 Đường ABC, Quận XYZ, TP.HCM"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Ngày sinh</Label>
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  />
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -267,7 +279,14 @@ export default function EditUser() {
                     disabled={rolesLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn vai trò" />
+                      <SelectValue 
+                        placeholder={rolesLoading ? "Đang tải..." : "Chọn vai trò"}
+                      >
+                        {formData.roleId && roles.length > 0 
+                          ? roles.find(r => r.id.toString() === formData.roleId)?.name 
+                          : (rolesLoading ? "Đang tải..." : "Chọn vai trò")
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {roles.map(role => (

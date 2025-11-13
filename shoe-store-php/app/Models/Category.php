@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Category extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'categories';
 
@@ -18,6 +19,7 @@ class Category extends Model
 
     const CREATED_AT = 'createdAt';
     const UPDATED_AT = 'updatedAt';
+    const DELETED_AT = 'deletedAt';
 
     // Self-referencing relationship for parent category
     public function parent()

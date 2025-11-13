@@ -315,7 +315,7 @@ class ProductService
     private function findProduct($id)
     {
         try {
-            $product = Product::with(['images', 'categories', 'variants.size'])->find($id);
+            $product = Product::with(['images', 'categories', 'variants.size', 'reviews.user'])->find($id);
 
             if (!$product) {
                 return [
@@ -591,8 +591,8 @@ class ProductService
                 unlink($imagePath);
             }
             
-            // Xóa record trong database
-            $image->delete();
+            // Xóa vĩnh viễn record trong database (force delete)
+            $image->forceDelete();
         }
     }
 
@@ -685,8 +685,8 @@ class ProductService
                 unlink($imagePath);
             }
 
-            // Xóa record trong database
-            $image->delete();
+            // Xóa vĩnh viễn record trong database (force delete)
+            $image->forceDelete();
 
             return [
                 'isDeleted' => true,

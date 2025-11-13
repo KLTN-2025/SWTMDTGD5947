@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/state/auth";
+import { CartIcon } from "@/components/cart/CartIcon";
 
 function AuthButtons() {
   const { user, logout } = useAuth();
@@ -53,7 +54,7 @@ export function Header() {
           <Button type="submit">Tìm</Button>
         </form>
         <div className="flex items-center gap-2">
-          <Link to="/cart"><Button variant="secondary">Giỏ hàng</Button></Link>
+          <CartIcon />
           <AuthButtons />
         </div>
       </div>

@@ -6,15 +6,71 @@ export interface ProductImage {
   id: number;
   productId: number;
   url: string;
-  fullUrl?: string; // From Laravel accessor
+  fullUrl: string; // Full URL from Laravel accessor
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
 }
 
 export interface ProductCategory {
   id: number;
   name: string;
   parentId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  pivot?: {
+    productId: number;
+    categoryId: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface Size {
+  id: number;
+  nameSize: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface ProductVariant {
+  id: number;
+  productId: number;
+  sizeId: number;
+  price: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  size: Size;
+}
+
+export interface ReviewUser {
+  id: number;
+  name: string;
+  userName: string;
+  imageUrl: string;
+  email: string;
+  isActive: boolean;
+  roleId: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  fullImageUrl: string;
+}
+
+export interface ProductReview {
+  id: number;
+  userId: number;
+  productId: number;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  user?: ReviewUser;
 }
 
 export interface Product {
@@ -28,8 +84,9 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
   images: ProductImage[];
-  categories?: ProductCategory[];
-  variants?: any[];
+  categories: ProductCategory[];
+  variants: ProductVariant[];
+  reviews: ProductReview[];
 }
 
 export interface ProductSearchParams {
@@ -71,9 +128,14 @@ class ProductApi {
     return apiClient.get<ProductListResponse>(`${this.baseUrl}/search`, params as any);
   }
 
-  // Get single product
+  // Get single product (public endpoint)
   async getProduct(id: number): Promise<ApiResponse<Product>> {
     return apiClient.get<Product>(`${this.baseUrl}/${id}`);
+  }
+
+  // Get single product from admin endpoint (includes more details)
+  async getProductDetail(id: number): Promise<ApiResponse<Product>> {
+    return apiClient.get<Product>(`/admin/products/${id}`);
   }
 }
 
