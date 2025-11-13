@@ -14,13 +14,8 @@ class UserProfile extends Model
 
     protected $fillable = [
         'userId',
-        'phone',
+        'phoneNumber',
         'address',
-        'dateOfBirth',
-    ];
-
-    protected $casts = [
-        'dateOfBirth' => 'date',
     ];
 
     const CREATED_AT = 'createdAt';

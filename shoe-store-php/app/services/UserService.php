@@ -468,7 +468,7 @@ class UserService
                 // Tạo profile
                 UserProfile::create([
                     'userId' => $user->id,
-                    'phone' => $data['phone'] ?? null,
+                    'phoneNumber' => $data['phone'] ?? null,
                     'address' => $data['address'] ?? null,
                     'dateOfBirth' => $data['dateOfBirth'] ?? null,
                 ]);
@@ -524,7 +524,6 @@ class UserService
                     $imageUrl = $this->handleImageUpload($request->file('image'));
                 }
 
-                // Cập nhật thông tin người dùng (KHÔNG có password)
                 $user->update([
                     'name' => $data['name'],
                     'userName' => $data['userName'],
@@ -534,11 +533,9 @@ class UserService
                     'imageUrl' => $imageUrl,
                 ]);
 
-                // Cập nhật hoặc tạo profile
                 $profileData = [
-                    'phone' => $data['phone'] ?? null,
+                    'phoneNumber' => $data['phone'] ?? null,
                     'address' => $data['address'] ?? null,
-                    'dateOfBirth' => $data['dateOfBirth'] ?? null,
                 ];
 
                 if ($user->profile) {
@@ -547,7 +544,6 @@ class UserService
                     UserProfile::create(array_merge($profileData, ['userId' => $user->id]));
                 }
 
-                // Cập nhật mật khẩu trong auth_providers nếu có
                 if (!empty($data['password'])) {
                     $authProvider = AuthProvider::where('userId', $user->id)
                         ->where('provider', 'LOCAL')
@@ -571,7 +567,6 @@ class UserService
             });
 
             $user->refresh()->load(['role', 'profile']);
-
             return [
                 'isUpdated' => true,
                 'response' => [

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
@@ -37,6 +38,14 @@ Route::group(['prefix' => 'products'], function () {
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/search', [ProductController::class, 'search']);
     Route::get('/{id}', [ProductController::class, 'show']);
+});
+
+Route::group(['prefix' => 'cart', 'middleware' => ['user']], function () { 
+    Route::post('/', [CartController::class, 'addToCart']);
+    Route::get('/', [CartController::class, 'getCartItems']);
+    Route::put('/items/{cartItemId}', [CartController::class, 'updateCartItem']);
+    Route::delete('/items/{cartItemId}', [CartController::class, 'deleteCartItem']);
+    Route::delete('/clear', [CartController::class, 'clearCart']);
 });
 
 // Categories
@@ -82,7 +91,7 @@ Route::group(['prefix' => 'admin', 'middleware' => ['admin']], function () {
         Route::get('/{id}', [UserController::class, 'show']);
         Route::post('/', [UserController::class, 'store']);
         Route::put('/{id}', [UserController::class, 'update']);
-        Route::post('/{id}', [UserController::class, 'update']); // For form-data
+        Route::post('/{id}', [UserController::class, 'update']);
         Route::delete('/{id}', [UserController::class, 'destroy']);
     });
 });

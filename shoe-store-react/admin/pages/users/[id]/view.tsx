@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Loader2, User, Mail, Phone, MapPin, Calendar, Shield, UserCheck, UserX, Key } from "lucide-react";
+import { getImageUrl } from "@/lib/image-utils";
 
 export default function ViewUser() {
   const navigate = useNavigate();
@@ -69,19 +70,26 @@ export default function ViewUser() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col items-center text-center">
-              {user.imageUrl ? (
-                <img 
-                  src={`${import.meta.env.VITE_API_URL}/${user.imageUrl}`}
-                  alt={user.name}
-                  className="h-32 w-32 rounded-full object-cover mb-4"
-                />
-              ) : (
-                <div className="h-32 w-32 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <span className="text-4xl font-medium text-primary">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
+              {(() => {
+                // Try fullImageUrl first (from backend), then imageUrl with getImageUrl
+                const imageUrl = (user as any).fullImageUrl || getImageUrl(user.imageUrl);
+                return imageUrl ? (
+                  <img 
+                    src={imageUrl}
+                    alt={user.name}
+                    className="h-32 w-32 rounded-full object-cover mb-4"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="h-32 w-32 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <span className="text-4xl font-medium text-primary">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                );
+              })()}
               <h2 className="text-2xl font-bold">{user.name}</h2>
               <p className="text-muted-foreground">@{user.userName}</p>
               
@@ -162,7 +170,7 @@ export default function ViewUser() {
                   <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm text-muted-foreground">Số điện thoại</p>
-                    <p className="font-medium">{user.profile?.phone || 'Chưa cập nhật'}</p>
+                    <p className="font-medium">{(user.profile as any)?.phoneNumber || 'Chưa cập nhật'}</p>
                   </div>
                 </div>
 

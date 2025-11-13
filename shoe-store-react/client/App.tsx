@@ -18,7 +18,9 @@ import OrderDetailPage from "./pages/orders/OrderDetail";
 import ProductDetail from "./pages/ProductDetail";
 import CategoriesPage from "./pages/Categories";
 import { CartProvider } from "./state/cart";
+import { CartApiProvider } from "./state/cart-api";
 import { AuthProvider } from "./state/auth";
+import Cart from "./pages/Cart";
 
 // Admin imports
 import { AdminLayout } from "../admin/components/layout/AdminLayout";
@@ -116,7 +118,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <CartProvider>
-        <TooltipProvider>
+        <CartApiProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -127,7 +130,8 @@ const App = () => (
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/orders/:id" element={<OrderDetailPage />} />
-              <Route path="/cart" element={<CartPage />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/cart/checkout" element={<CartPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/profile" element={<UserProtectedRoute><ProfilePage /></UserProtectedRoute>} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -159,7 +163,8 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </TooltipProvider>
+          </TooltipProvider>
+        </CartApiProvider>
       </CartProvider>
     </AuthProvider>
   </QueryClientProvider>

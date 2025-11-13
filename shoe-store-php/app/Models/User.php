@@ -37,6 +37,8 @@ class User extends Authenticatable implements JWTSubject
         'deletedAt' => 'datetime',
     ];
 
+    protected $appends = ['fullImageUrl'];
+
     const STATUS_ACTIVE = 'ACTIVE';
     const STATUS_INACTIVE = 'INACTIVE';
     const CREATED_AT = 'createdAt';
@@ -44,6 +46,24 @@ class User extends Authenticatable implements JWTSubject
     const DELETED_AT = 'deletedAt';
 
     public $timestamps = true;
+
+    /**
+     * Get full URL for user image
+     */
+    public function getFullImageUrlAttribute()
+    {
+        if (!$this->imageUrl) {
+            return null;
+        }
+
+        // If already a full URL, return as is
+        if (str_starts_with($this->imageUrl, 'http://') || str_starts_with($this->imageUrl, 'https://')) {
+            return $this->imageUrl;
+        }
+
+        // Build full URL
+        return url($this->imageUrl);
+    }
     public function role()
     {
         return $this->belongsTo(Role::class, 'roleId');

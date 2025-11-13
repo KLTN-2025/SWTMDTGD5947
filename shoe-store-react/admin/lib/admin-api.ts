@@ -192,7 +192,7 @@ export const adminCategoryApi = new AdminCategoryApi();
 export interface UserProfile {
   id: number;
   userId: number;
-  phone?: string | null;
+  phoneNumber?: string | null; // Match Laravel backend field name
   address?: string | null;
   dateOfBirth?: string | null;
   createdAt: string;
@@ -212,6 +212,7 @@ export interface AdminUser {
   userName: string;
   email: string;
   imageUrl?: string | null;
+  fullImageUrl?: string | null; // From Laravel accessor
   isActive: boolean;
   roleId: number;
   role?: UserRole;

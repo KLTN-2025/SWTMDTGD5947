@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getImageUrl } from "@/lib/image-utils";
 import { 
   Select,
   SelectContent,
@@ -219,19 +220,26 @@ export default function Users() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      {user.imageUrl ? (
-                        <img 
-                          src={`${import.meta.env.VITE_API_URL}/${user.imageUrl}`}
-                          alt={user.name}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary">
-                            {user.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
+                      {(() => {
+                        // Try fullImageUrl first (from backend), then imageUrl with getImageUrl
+                        const imageUrl = (user as any).fullImageUrl || getImageUrl(user.imageUrl);
+                        return imageUrl ? (
+                          <img 
+                            src={imageUrl}
+                            alt={user.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-medium text-primary">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       <div>
                         <div className="font-medium">{user.name}</div>
                         <div className="text-sm text-muted-foreground">@{user.userName}</div>
