@@ -277,15 +277,37 @@ export default function Products() {
                         </TableCell>
                         <TableCell>{p.skuId}</TableCell>
                         <TableCell>
-                          {p.categories && p.categories.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {p.categories.map(cat => (
-                                <Badge key={cat.id} variant="outline" className="text-xs">
-                                  {cat.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : "—"}
+                          <div className="space-y-1">
+                            {p.categories && p.categories.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {p.categories.map(cat => (
+                                  <Badge key={cat.id} variant="outline" className="text-xs">
+                                    {cat.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            {p.colors && p.colors.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {p.colors.map(color => (
+                                  <Badge 
+                                    key={color.id} 
+                                    variant="outline" 
+                                    className="text-xs flex items-center gap-1"
+                                  >
+                                    {color.hexCode && (
+                                      <span 
+                                        className="w-2 h-2 rounded-full border border-gray-300"
+                                        style={{ backgroundColor: color.hexCode }}
+                                      />
+                                    )}
+                                    {color.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            {(!p.categories || p.categories.length === 0) && (!p.colors || p.colors.length === 0) && "—"}
+                          </div>
                         </TableCell>
                         <TableCell className="font-medium">
                           {p.basePrice.toLocaleString("vi-VN")}₫

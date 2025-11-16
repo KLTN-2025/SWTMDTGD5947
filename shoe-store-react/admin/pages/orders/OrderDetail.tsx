@@ -163,6 +163,22 @@ export default function OrderDetail() {
                       <p className="text-sm text-gray-500">
                         SKU: {item.productVariant.product.skuId} | Size: {item.productVariant.size.nameSize}
                       </p>
+                      {/* Color - hiển thị màu đã chọn */}
+                      {item.color && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground">Màu:</span>
+                          <Badge 
+                            variant="outline"
+                            className="text-xs"
+                            title={item.color.name}
+                          >
+                            {item.color.name}
+                            {item.color.hexCode && (
+                              <span className="ml-1 text-muted-foreground">({item.color.hexCode})</span>
+                            )}
+                          </Badge>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         <div className="text-sm">
                           <span className="text-gray-500">Số lượng: </span>

@@ -26,6 +26,22 @@ export interface ProductCategory {
   };
 }
 
+export interface ProductColor {
+  id: number;
+  name: string;
+  hexCode?: string | null;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  pivot?: {
+    productId: number;
+    colorId: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 export interface Size {
   id: number;
   nameSize: string;
@@ -85,6 +101,7 @@ export interface Product {
   updatedAt: string;
   images: ProductImage[];
   categories: ProductCategory[];
+  colors?: ProductColor[];
   variants: ProductVariant[];
   reviews: ProductReview[];
 }

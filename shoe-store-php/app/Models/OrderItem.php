@@ -13,6 +13,7 @@ class OrderItem extends Model
 
     protected $fillable = [
         'productVariantId',
+        'colorId',
         'orderId',
         'quantity',
         'amount',
@@ -31,5 +32,11 @@ class OrderItem extends Model
     public function order()
     {
         return $this->belongsTo(Order::class, 'orderId');
+    }
+
+    // Many-to-one relationship with color
+    public function color()
+    {
+        return $this->belongsTo(Color::class, 'colorId');
     }
 }

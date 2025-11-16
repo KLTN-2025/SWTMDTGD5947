@@ -10,6 +10,15 @@ export interface ProductImage {
   updatedAt: string;
 }
 
+export interface Color {
+  id: number;
+  name: string;
+  hexCode?: string | null;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface AdminProduct {
   id: number;
   skuId: string;
@@ -22,6 +31,7 @@ export interface AdminProduct {
   updatedAt: string;
   images: ProductImage[];
   categories?: any[];
+  colors?: Color[];
   variants?: any[];
 }
 
@@ -33,6 +43,7 @@ export interface CreateProductRequest {
   basePrice: number;
   quantity: number;
   category_ids?: number[];
+  color_ids?: number[];
   images?: File[];
 }
 
@@ -44,6 +55,7 @@ export interface UpdateProductRequest {
   basePrice?: number;
   quantity?: number;
   category_ids?: number[];
+  color_ids?: number[];
   images?: File[];
 }
 
@@ -86,6 +98,12 @@ export class AdminProductApi {
       });
     }
     
+    if (data.color_ids && data.color_ids.length > 0) {
+      data.color_ids.forEach((id, index) => {
+        formData.append(`color_ids[${index}]`, id.toString());
+      });
+    }
+    
     if (data.images && data.images.length > 0) {
       data.images.forEach((file, index) => {
         formData.append(`images[${index}]`, file);
@@ -110,6 +128,12 @@ export class AdminProductApi {
     if (data.category_ids && data.category_ids.length > 0) {
       data.category_ids.forEach((id, index) => {
         formData.append(`category_ids[${index}]`, id.toString());
+      });
+    }
+    
+    if (data.color_ids && data.color_ids.length > 0) {
+      data.color_ids.forEach((id, index) => {
+        formData.append(`color_ids[${index}]`, id.toString());
       });
     }
     
@@ -340,6 +364,18 @@ export class AdminUserApi {
 }
 
 export const adminUserApi = new AdminUserApi();
+
+// Color Types and API
+export class ColorApi {
+  private baseUrl = '/colors';
+
+  // Get all colors
+  async getColors(): Promise<ApiResponse<Color[]>> {
+    return apiClient.get<Color[]>(this.baseUrl);
+  }
+}
+
+export const colorApi = new ColorApi();
 
 // Admin API instance for orders
 class AdminApi {

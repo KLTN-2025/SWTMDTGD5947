@@ -48,6 +48,11 @@ export interface OrderItem {
       name: string;
       skuId: string;
       basePrice: number;
+      colors?: Array<{
+        id: number;
+        name: string;
+        hexCode?: string | null;
+      }>;
     };
     size: {
       id: number;

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAdminProduct, useAdminProducts } from "../../lib/use-admin-products";
 import { useAdminCategories } from "../../lib/use-admin-categories";
+import { useColors } from "../../lib/use-colors";
 import { adminProductApi } from "../../lib/admin-api";
 import { toast } from "sonner";
 import { Upload, X, Trash2 } from "lucide-react";
@@ -19,6 +20,7 @@ export default function ProductEdit() {
   const { product, loading: loadingProduct } = useAdminProduct(Number(id));
   const { updateProduct } = useAdminProducts();
   const { categories } = useAdminCategories();
+  const { colors, loading: colorsLoading } = useColors();
   
   const [skuId, setSkuId] = useState("");
   const [name, setName] = useState("");
@@ -27,9 +29,11 @@ export default function ProductEdit() {
   const [quantity, setQuantity] = useState<number>(0);
   const [status, setStatus] = useState<'IN_STOCK' | 'SOLD_OUT' | 'PRE_SALE'>('IN_STOCK');
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
+  const [colorIds, setColorIds] = useState<number[]>([]);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Effect to set product data when product loads
   useEffect(() => {
     if (product) {
       setSkuId(product.skuId);
@@ -38,10 +42,54 @@ export default function ProductEdit() {
       setBasePrice(product.basePrice);
       setQuantity(product.quantity);
       setStatus(product.status);
+      
       // Set category IDs from product.categories
-      if (product.categories && product.categories.length > 0) {
+      if (product.categories && Array.isArray(product.categories) && product.categories.length > 0) {
         setCategoryIds(product.categories.map(c => c.id));
+      } else {
+        setCategoryIds([]);
       }
+    } else {
+      // Reset all fields when product is null
+      setSkuId("");
+      setName("");
+      setDescription("");
+      setBasePrice(0);
+      setQuantity(0);
+      setStatus('IN_STOCK');
+      setCategoryIds([]);
+      setColorIds([]);
+    }
+  }, [product]);
+
+  // Separate effect to handle colors - ensures colors are set correctly when product loads
+  useEffect(() => {
+    if (!product) {
+      setColorIds([]);
+      return;
+    }
+
+    // Set color IDs from product.colors - Always set, even if empty
+    // This ensures checkboxes are properly checked for existing colors
+    if (product.colors && Array.isArray(product.colors)) {
+      if (product.colors.length > 0) {
+        const colorIdsArray = product.colors
+          .map(c => {
+            // Handle both direct color object and color with pivot
+            if (c && typeof c === 'object' && 'id' in c) {
+              return c.id;
+            }
+            return null;
+          })
+          .filter((id): id is number => id !== null && typeof id === 'number');
+        setColorIds(colorIdsArray);
+      } else {
+        // Empty array - no colors assigned
+        setColorIds([]);
+      }
+    } else {
+      // Product exists but no colors property - reset
+      setColorIds([]);
     }
   }, [product]);
 
@@ -84,6 +132,7 @@ export default function ProductEdit() {
         quantity,
         status,
         category_ids: categoryIds,
+        color_ids: colorIds,
         images: newImages.length > 0 ? newImages : undefined,
       });
       // Hook already shows toast, just navigate
@@ -224,6 +273,55 @@ export default function ProductEdit() {
                   </label>
                 </div>
               ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Màu sắc sản phẩm</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {colorsLoading ? (
+              <p className="text-sm text-gray-500">Đang tải màu sắc...</p>
+            ) : colors.length === 0 ? (
+              <p className="text-sm text-gray-500">Chưa có màu sắc nào</p>
+            ) : (
+              colors.map((color) => {
+                const isChecked = colorIds.includes(color.id);
+                return (
+                  <div key={color.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`color-${color.id}`}
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setColorIds(prev => [...prev, color.id]);
+                        } else {
+                          setColorIds(prev => prev.filter(id => id !== color.id));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`color-${color.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                    >
+                      {color.hexCode && (
+                        <span 
+                          className="w-4 h-4 rounded-full border border-gray-300"
+                          style={{ backgroundColor: color.hexCode }}
+                        />
+                      )}
+                      {color.name}
+                      {isChecked && (
+                        <span className="text-xs text-green-600 ml-1">(đã chọn)</span>
+                      )}
+                    </label>
+                  </div>
+                );
+              })
             )}
           </div>
         </CardContent>

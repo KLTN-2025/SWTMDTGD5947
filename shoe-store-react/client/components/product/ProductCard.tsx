@@ -59,6 +59,27 @@ export function ProductCard({ product }: { product: Product }) {
             ))}
           </div>
         )}
+        {product.colors && product.colors.length > 0 && (
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-muted-foreground">Màu:</span>
+            {product.colors.slice(0, 3).map((color) => (
+              <Badge 
+                key={color.id}
+                variant="outline"
+                className="text-xs"
+                title={color.name}
+              >
+                {color.name}
+                {color.hexCode && (
+                  <span className="ml-1 text-muted-foreground">({color.hexCode})</span>
+                )}
+              </Badge>
+            ))}
+            {product.colors.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{product.colors.length - 3}</span>
+            )}
+          </div>
+        )}
         <div className="mt-auto pt-4">
           <Button className="w-full" size="sm" asChild>
             <Link to={`/products/${product.id}`}>Xem chi tiết</Link>

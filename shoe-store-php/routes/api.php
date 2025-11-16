@@ -4,9 +4,11 @@ use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ColorController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ProfileController;
@@ -75,6 +77,16 @@ Route::group(['prefix' => 'payments'], function () {
 Route::group(['prefix' => 'categories'], function () {
     Route::get('/', [CategoryController::class, 'index']);
     Route::get('/{id}', [CategoryController::class, 'show']);
+});
+
+// Colors
+Route::get('/colors', [ColorController::class, 'index']);
+
+// Reviews
+Route::group(['prefix' => 'reviews', 'middleware' => ['user']], function () {
+    Route::post('/', [ReviewController::class, 'store']);
+    Route::put('/{id}', [ReviewController::class, 'update']);
+    Route::delete('/{id}', [ReviewController::class, 'destroy']);
 });
 
 // Roles

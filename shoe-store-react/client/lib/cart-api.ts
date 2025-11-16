@@ -6,6 +6,7 @@ export interface CartItemResponse {
   id: number;
   cartId: number;
   productVariantId: number;
+  colorId?: number | null;
   quantity: number;
   createdAt: string;
   updatedAt: string;
@@ -65,6 +66,21 @@ export interface CartItemResponse {
           updatedAt: string;
         };
       }>;
+      colors?: Array<{
+        id: number;
+        name: string;
+        hexCode?: string | null;
+        description?: string | null;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt?: string | null;
+        pivot?: {
+          productId: number;
+          colorId: number;
+          createdAt: string;
+          updatedAt: string;
+        };
+      }>;
     };
     size: {
       id: number;
@@ -75,6 +91,15 @@ export interface CartItemResponse {
       deletedAt?: string | null;
     };
   };
+  color?: {
+    id: number;
+    name: string;
+    hexCode?: string | null;
+    description?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt?: string | null;
+  } | null;
 }
 
 export interface CartResponse {
@@ -92,6 +117,7 @@ export interface CartResponse {
 
 export interface AddToCartRequest {
   productVariantId: number;
+  colorId?: number | null;
   quantity: number;
 }
 

@@ -256,6 +256,22 @@ export default function Checkout() {
                         Size: {item.productVariant?.size?.nameSize} | 
                         Số lượng: {item.quantity}
                       </p>
+                      {/* Color - hiển thị màu đã chọn */}
+                      {item.color && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground">Màu:</span>
+                          <Badge 
+                            variant="outline"
+                            className="text-xs"
+                            title={item.color.name}
+                          >
+                            {item.color.name}
+                            {item.color.hexCode && (
+                              <span className="ml-1 text-muted-foreground">({item.color.hexCode})</span>
+                            )}
+                          </Badge>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-sm text-gray-600">
                           {formatPrice(item.productVariant?.price || 0)} x {item.quantity}

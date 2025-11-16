@@ -64,7 +64,17 @@ export default function OrderDetailPage() {
       const response = await orderApi.getOrderDetail(orderId);
       
       if (response.status && response.data) {
-        setOrder(response.data.order);
+        // Transform snake_case to camelCase for items
+        const order = response.data.order;
+        if (order.items) {
+          order.items = order.items.map((item: any) => ({
+            ...item,
+            productVariant: item.productVariant || item.product_variant,
+            // Ensure color is available
+            color: item.color || null
+          }));
+        }
+        setOrder(order);
       } else {
         navigate('/orders');
       }
@@ -199,6 +209,22 @@ export default function OrderDetailPage() {
                     <p className="text-sm text-muted-foreground">
                       SKU: {item.productVariant?.product?.skuId} | Size: {item.productVariant?.size?.nameSize}
                     </p>
+                    {/* Color - hiển thị màu đã chọn */}
+                    {item.color && (
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <span className="text-xs text-muted-foreground">Màu:</span>
+                        <Badge 
+                          variant="outline"
+                          className="text-xs"
+                          title={item.color.name}
+                        >
+                          {item.color.name}
+                          {item.color.hexCode && (
+                            <span className="ml-1 text-muted-foreground">({item.color.hexCode})</span>
+                          )}
+                        </Badge>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-2">
                       <div className="text-sm">
                         <span className="text-muted-foreground">Số lượng: </span>

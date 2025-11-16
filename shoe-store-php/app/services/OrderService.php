@@ -21,7 +21,12 @@ class OrderService
             $status = $request->input('status');
 
             $query = Order::where('userId', $user->id)
-                ->with(['items.productVariant.product.images', 'items.productVariant.size'])
+                ->with([
+                    'items.productVariant.product.images', 
+                    'items.productVariant.product.colors', 
+                    'items.productVariant.size',
+                    'items.color'
+                ])
                 ->orderBy('createdAt', 'desc');
 
             // Filter by status if provided
@@ -183,7 +188,9 @@ class OrderService
                 ->where('userId', $user->id)
                 ->with([
                     'items.productVariant.product.images',
+                    'items.productVariant.product.colors',
                     'items.productVariant.size',
+                    'items.color',
                     'payment'
                 ])
                 ->first();
@@ -247,6 +254,7 @@ class OrderService
                 // Load lại order với relationships
                 $order->load([
                     'items.productVariant.product.images',
+                    'items.productVariant.product.colors',
                     'items.productVariant.size'
                 ]);
 

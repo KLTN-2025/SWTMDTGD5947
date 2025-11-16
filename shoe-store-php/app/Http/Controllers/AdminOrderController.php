@@ -46,7 +46,9 @@ class AdminOrderController extends Controller
                 'user:id,name,email,imageUrl', 
                 'user.profile:userId,phoneNumber,address',
                 'items.productVariant.product', 
-                'items.productVariant.size'
+                'items.productVariant.product.colors',
+                'items.productVariant.size',
+                'items.color'
             ]);
 
             // Filter by status
@@ -158,8 +160,10 @@ class AdminOrderController extends Controller
                 'user:id,name,email,imageUrl',
                 'user.profile:userId,phoneNumber,address',
                 'items.productVariant.product:id,name,skuId,basePrice',
+                'items.productVariant.product.colors:id,name,hexCode',
                 'items.productVariant.size:id,nameSize',
-                'items.productVariant.product.images:id,productId,url'
+                'items.productVariant.product.images:id,productId,url',
+                'items.color:id,name,hexCode'
             ])->find($id);
 
             if (!$order) {
@@ -181,6 +185,12 @@ class AdminOrderController extends Controller
                     'quantity' => $item->quantity,
                     'itemTotal' => $item->quantity * $item->productVariant->price,
                     'mainImage' => $mainImage ? url($mainImage->url) : null,
+                    'colorId' => $item->colorId,
+                    'color' => $item->color ? [
+                        'id' => $item->color->id,
+                        'name' => $item->color->name,
+                        'hexCode' => $item->color->hexCode,
+                    ] : null,
                     'productVariant' => [
                         'id' => $item->productVariant->id,
                         'price' => $item->productVariant->price,
@@ -189,6 +199,13 @@ class AdminOrderController extends Controller
                             'name' => $product->name,
                             'skuId' => $product->skuId,
                             'basePrice' => $product->basePrice,
+                            'colors' => $product->colors->map(function ($color) {
+                                return [
+                                    'id' => $color->id,
+                                    'name' => $color->name,
+                                    'hexCode' => $color->hexCode,
+                                ];
+                            }),
                         ],
                         'size' => [
                             'id' => $item->productVariant->size->id,
