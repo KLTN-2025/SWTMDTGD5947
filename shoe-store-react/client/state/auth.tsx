@@ -8,6 +8,7 @@ export interface UserProfile {
   name: string;
   userName: string;
   email: string;
+  imageUrl?: string;
   isActive: boolean;
   roleId: number;
   createdAt: string;
@@ -24,7 +25,7 @@ interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserProfile | null>;
   register: (name: string, userName: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: () => void;
   logout: () => Promise<void>;
@@ -80,14 +81,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  async function login(email: string, password: string): Promise<void> {
+  async function login(email: string, password: string): Promise<UserProfile | null> {
     try {
       setLoading(true);
       const response = await authApi.login({ email, password });
       
       if (response.data) {
         setUser(response.data.user);
+        return response.data.user;
       }
+      return null;
     } catch (error) {
       if (error instanceof ApiError) {
         throw new Error(typeof error.apiMessage === 'string' ? error.apiMessage : 'Đăng nhập thất bại');

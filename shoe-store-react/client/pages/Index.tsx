@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/product-api";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Link, useNavigate } from "react-router-dom";
+import { apiClient } from "@/lib/api-client";
 import { 
   ShoppingBag, 
   Truck, 
@@ -17,7 +18,16 @@ import {
   Award,
   Heart,
   Clock,
-  Zap
+  Zap,
+  Users,
+  Package,
+  ShoppingCart,
+  Eye,
+  Percent,
+  Flame,
+  Footprints,
+  Briefcase,
+  Mountain
 } from "lucide-react";
 
 export default function Index() {
@@ -45,8 +55,19 @@ export default function Index() {
     }
   });
 
+  // Statistics API
+  const { data: statsData } = useQuery({
+    queryKey: ['homepage-stats'],
+    queryFn: async () => {
+      const response = await apiClient.get('/products/stats');
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   const featuredProducts = featuredData?.products || [];
   const newProducts = newData?.products || [];
+  const stats = (statsData as any)?.data || {};
   const navigate = useNavigate();
 
   return (
@@ -127,6 +148,51 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Statistics */}
+      <section className="container py-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-2xl p-6 text-center border border-blue-200/50">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-500/10 rounded-xl mx-auto mb-3">
+              <Package className="w-6 h-6 text-blue-600" />
+            </div>
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+              {stats.totalProducts || '100+'}
+            </div>
+            <div className="text-sm text-blue-600 dark:text-blue-300">Sản phẩm</div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 rounded-2xl p-6 text-center border border-green-200/50">
+            <div className="flex items-center justify-center w-12 h-12 bg-green-500/10 rounded-xl mx-auto mb-3">
+              <Users className="w-6 h-6 text-green-600" />
+            </div>
+            <div className="text-2xl font-bold text-green-900 dark:text-green-100">
+              {stats.totalCustomers || '1K+'}
+            </div>
+            <div className="text-sm text-green-600 dark:text-green-300">Khách hàng</div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 rounded-2xl p-6 text-center border border-purple-200/50">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-500/10 rounded-xl mx-auto mb-3">
+              <ShoppingCart className="w-6 h-6 text-purple-600" />
+            </div>
+            <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+              {stats.totalOrders || '500+'}
+            </div>
+            <div className="text-sm text-purple-600 dark:text-purple-300">Đơn hàng</div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20 rounded-2xl p-6 text-center border border-orange-200/50">
+            <div className="flex items-center justify-center w-12 h-12 bg-orange-500/10 rounded-xl mx-auto mb-3">
+              <Star className="w-6 h-6 text-orange-600" />
+            </div>
+            <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+              {stats.averageRating || '4.8'}
+            </div>
+            <div className="text-sm text-orange-600 dark:text-orange-300">Đánh giá</div>
+          </div>
+        </div>
+      </section>
+
       {/* Featured products */}
       <section className="container py-12">
         <div className="flex items-end justify-between mb-6">
@@ -163,6 +229,56 @@ export default function Index() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Flash Sale */}
+      <section className="container py-8">
+        <div className="bg-gradient-to-r from-red-500 to-pink-600 rounded-3xl p-8 text-white relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-white/10 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:20px_20px]"></div>
+          </div>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between">
+            <div className="flex-1 mb-6 md:mb-0">
+              <div className="flex items-center gap-2 mb-3">
+                <Flame className="w-6 h-6 text-yellow-300" />
+                <Badge variant="secondary" className="bg-yellow-400 text-yellow-900 border-0">
+                  Flash Sale
+                </Badge>
+                <Badge variant="outline" className="border-white/30 text-white">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Còn 2 ngày
+                </Badge>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-3">
+                Giảm giá lên đến <span className="text-yellow-300">50%</span>
+              </h2>
+              <p className="text-white/90 text-lg mb-4">
+                Khuyến mãi đặc biệt cho bộ sưu tập giày thể thao cao cấp
+              </p>
+              <Button 
+                size="lg" 
+                variant="secondary"
+                onClick={() => navigate("/products?sale=true")}
+                className="bg-white text-red-600 hover:bg-white/90 font-semibold"
+              >
+                <Percent className="w-4 h-4 mr-2" />
+                Mua ngay
+              </Button>
+            </div>
+            <div className="flex-shrink-0">
+              <div className="relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=400&auto=format&fit=crop" 
+                  alt="Flash Sale" 
+                  className="w-48 h-48 object-cover rounded-2xl shadow-2xl"
+                />
+                <div className="absolute -top-3 -right-3 bg-yellow-400 text-red-600 rounded-full w-16 h-16 flex items-center justify-center font-bold text-lg">
+                  50%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* New Products */}
@@ -213,38 +329,63 @@ export default function Index() {
           <h2 className="text-2xl md:text-3xl font-bold">Danh mục sản phẩm</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            {k:"sneaker", label: "Sneaker", img:"https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200&auto=format&fit=crop"},
-            {k:"thể thao", label: "Thể thao", img:"https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=1200&auto=format&fit=crop"},
-            {k:"công sở", label: "Công sở", img:"https://images.unsplash.com/photo-1619983081563-430f63602796?q=80&w=1200&auto=format&fit=crop"},
-            {k:"boot", label: "Boot", img:"https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop"}
-          ].map((c)=> (
-            <Link 
-              key={c.k} 
-              to={`/products?type=${encodeURIComponent(c.k)}`} 
-              className="relative rounded-2xl overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-            >
-              <img 
-                src={c.img} 
-                alt={c.k} 
-                className="h-48 w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-300" />
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="text-white font-bold text-lg mb-1">{c.label.toUpperCase()}</div>
-                <div className="text-white/80 text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-1">
-                  Khám phá ngay
-                  <ArrowRight className="w-3 h-3" />
-                </div>
-              </div>
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                  Hot
-                </Badge>
-              </div>
-            </Link>
-          ))}
+          {(() => {
+            // Helper function để lấy icon và gradient cho category
+            const getCategoryStyle = (name: string, index: number) => {
+              const styles = [
+                { icon: Footprints, gradient: "from-blue-500 to-cyan-500", bg: "from-blue-50 to-cyan-50", dark: "dark:from-blue-950/20 dark:to-cyan-950/20" },
+                { icon: Zap, gradient: "from-green-500 to-emerald-500", bg: "from-green-50 to-emerald-50", dark: "dark:from-green-950/20 dark:to-emerald-950/20" },
+                { icon: Briefcase, gradient: "from-purple-500 to-violet-500", bg: "from-purple-50 to-violet-50", dark: "dark:from-purple-950/20 dark:to-violet-950/20" },
+                { icon: Mountain, gradient: "from-orange-500 to-red-500", bg: "from-orange-50 to-red-50", dark: "dark:from-orange-950/20 dark:to-red-950/20" }
+              ];
+              
+              // Tìm style dựa trên tên hoặc sử dụng index
+              if (name.toLowerCase().includes('sneaker') || name.toLowerCase().includes('giày')) return styles[0];
+              if (name.toLowerCase().includes('thể thao') || name.toLowerCase().includes('sport')) return styles[1];
+              if (name.toLowerCase().includes('công sở') || name.toLowerCase().includes('office')) return styles[2];
+              if (name.toLowerCase().includes('boot') || name.toLowerCase().includes('cao cổ')) return styles[3];
+              
+              return styles[index % styles.length];
+            };
+
+            const displayCategories = [
+              {id: 1, name: "Sneaker", slug: "sneaker"},
+              {id: 2, name: "Thể thao", slug: "the-thao"},
+              {id: 3, name: "Công sở", slug: "cong-so"},
+              {id: 4, name: "Boot", slug: "boot"}
+            ];
+
+            return displayCategories.map((c, index) => {
+              const style = getCategoryStyle(c.name, index);
+              const IconComponent = style.icon;
+              
+              return (
+                <Link 
+                  key={c.id || c.slug} 
+                  to={`/products?category=${encodeURIComponent(c.slug || c.name)}`} 
+                  className={`group relative rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-gradient-to-br ${style.bg} ${style.dark} border border-white/20`}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${style.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                      <IconComponent className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
+                      {c.name}
+                    </h3>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      Khám phá ngay
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
+                  </div>
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Badge variant="secondary" className="text-xs">
+                      Hot
+                    </Badge>
+                  </div>
+                </Link>
+              );
+            });
+          })()}
         </div>
       </section>
 

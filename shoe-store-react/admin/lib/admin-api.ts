@@ -340,3 +340,26 @@ export class AdminUserApi {
 }
 
 export const adminUserApi = new AdminUserApi();
+
+// Admin API instance for orders
+class AdminApi {
+  private baseUrl = '/admin';
+
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return apiClient.get<T>(`${this.baseUrl}${endpoint}`);
+  }
+
+  async post<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+    return apiClient.post<T>(`${this.baseUrl}${endpoint}`, data);
+  }
+
+  async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+    return apiClient.put<T>(`${this.baseUrl}${endpoint}`, data);
+  }
+
+  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return apiClient.delete<T>(`${this.baseUrl}${endpoint}`);
+  }
+}
+
+export const adminApi = new AdminApi();

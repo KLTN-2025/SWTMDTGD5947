@@ -331,7 +331,7 @@ export default function Cart() {
 
                   <div className="mt-6 space-y-3">
                     <Button className="w-full" size="lg" asChild>
-                      <Link to="/cart/checkout">
+                      <Link to="/checkout">
                         Tiến hành thanh toán
                       </Link>
                     </Button>

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cartApi, type CartItemResponse, type CartResponse } from "@/lib/cart-api";
 import { useAuth } from "@/state/auth";
 import { toast } from "sonner";
+import { ApiError } from "@/lib/api-client";
 
 interface CartApiContextValue {
   // Data
@@ -87,8 +88,15 @@ export function CartApiProvider({ children }: { children: React.ReactNode }) {
       toast.success('Cập nhật giỏ hàng thành công');
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || 'Cập nhật giỏ hàng thất bại';
-      toast.error(message);
+      if (error instanceof ApiError) {
+        const message = typeof error.apiMessage === 'string' 
+          ? error.apiMessage 
+          : 'Cập nhật giỏ hàng thất bại';
+        toast.error(message);
+      } else {
+        const message = error?.response?.data?.message || 'Cập nhật giỏ hàng thất bại';
+        toast.error(message);
+      }
     }
   });
 

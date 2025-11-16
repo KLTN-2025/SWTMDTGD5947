@@ -2,13 +2,13 @@ import { Layout } from "@/components/layout/Layout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/state/auth";
+import { useAuth, ROLES } from "@/state/auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function AuthPage() {
-  const { login, register, loginWithGoogle, sendPasswordResetEmail, loading } = useAuth();
+  const { login, register, loginWithGoogle, sendPasswordResetEmail, loading, user } = useAuth();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [name, setName] = useState("");
@@ -27,9 +27,15 @@ export default function AuthPage() {
 
     try {
       setIsLoading(true);
-      await login(loginEmail, loginPw);
+      const loggedInUser = await login(loginEmail, loginPw);
       toast.success("Đăng nhập thành công");
-      navigate("/");
+      
+      // Redirect based on user role
+      if (loggedInUser?.roleId === ROLES.ADMIN) {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (error: any) {
       toast.error(error.message || "Đăng nhập thất bại");
     } finally {

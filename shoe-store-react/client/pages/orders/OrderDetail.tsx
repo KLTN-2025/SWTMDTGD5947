@@ -1,9 +1,13 @@
+import React, { useState, useEffect } from 'react';
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useCart } from "@/state/cart";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { orderApi } from "@/lib/order-api";
+import type { Order } from "@/lib/api-types";
+import { formatPrice } from "@/lib/utils";
 import { 
   Package, 
   Clock, 
@@ -12,48 +16,100 @@ import {
   XCircle, 
   Calendar, 
   MapPin, 
-  Phone, 
-  User,
   CreditCard,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 
-function statusLabel(s: string) {
-  switch (s) {
-    case "cho_xu_ly": return "Chờ xử lý";
-    case "dang_giao": return "Đang giao";
-    case "da_giao": return "Đã giao";
-    case "da_huy": return "Đã hủy";
-    default: return s;
-  }
-}
-
-function statusIcon(s: string) {
-  switch (s) {
-    case "cho_xu_ly": return <Clock className="w-5 h-5" />;
-    case "dang_giao": return <Truck className="w-5 h-5" />;
-    case "da_giao": return <CheckCircle className="w-5 h-5" />;
-    case "da_huy": return <XCircle className="w-5 h-5" />;
+function statusIcon(status: string) {
+  switch (status) {
+    case "PENDING": return <Clock className="w-5 h-5" />;
+    case "CONFIRMED": return <CheckCircle className="w-5 h-5" />;
+    case "SHIPPED": return <Truck className="w-5 h-5" />;
+    case "COMPLETED": return <CheckCircle className="w-5 h-5" />;
+    case "CANCELLED": return <XCircle className="w-5 h-5" />;
     default: return <Package className="w-5 h-5" />;
   }
 }
 
-function statusVariant(s: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (s) {
-    case "cho_xu_ly": return "secondary";
-    case "dang_giao": return "default";
-    case "da_giao": return "outline";
-    case "da_huy": return "destructive";
+function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case "PENDING": return "secondary";
+    case "CONFIRMED": return "default";
+    case "SHIPPED": return "default";
+    case "COMPLETED": return "outline";
+    case "CANCELLED": return "destructive";
     default: return "outline";
   }
 }
 
 export default function OrderDetailPage() {
   const { id } = useParams();
-  const { orders, cancelOrder } = useCart();
   const navigate = useNavigate();
-  const order = orders.find((o) => o.id === id);
+  const location = useLocation();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      loadOrderDetail(parseInt(id));
+    }
+  }, [id]);
+
+  const loadOrderDetail = async (orderId: number) => {
+    try {
+      setIsLoading(true);
+      const response = await orderApi.getOrderDetail(orderId);
+      
+      if (response.status && response.data) {
+        setOrder(response.data.order);
+      } else {
+        navigate('/orders');
+      }
+    } catch (error) {
+      console.error('Failed to load order detail:', error);
+      navigate('/orders');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order || !confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
+      return;
+    }
+
+    try {
+      setIsCancelling(true);
+      const response = await orderApi.cancelOrder(order.id);
+      
+      if (response.status) {
+        await loadOrderDetail(order.id);
+      } else {
+        alert(response.message || 'Hủy đơn hàng thất bại');
+      }
+    } catch (error) {
+      console.error('Cancel order failed:', error);
+      alert('Có lỗi xảy ra khi hủy đơn hàng');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <section className="container py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Đang tải chi tiết đơn hàng...</span>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
 
   if (!order) {
     return (
@@ -85,7 +141,7 @@ export default function OrderDetailPage() {
               <h1 className="text-2xl md:text-3xl font-bold">Đơn hàng #{order.id}</h1>
               <Badge variant={statusVariant(order.status)} className="flex items-center gap-1">
                 {statusIcon(order.status)}
-                {statusLabel(order.status)}
+                {order.statusDisplay}
               </Badge>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -95,18 +151,32 @@ export default function OrderDetailPage() {
               </div>
               <div className="flex items-center gap-1">
                 <CreditCard className="w-4 h-4" />
-                {order.paymentMethod === "cod" ? "Thanh toán khi nhận hàng" : 
-                 order.paymentMethod === "vnpay" ? "VNPay" :
-                 order.paymentMethod === "momo" ? "MoMo" : "PayPal"}
+                {order.paymentMethod === "CASH" ? "Thanh toán khi nhận hàng" : order.paymentMethod}
               </div>
             </div>
           </div>
-          {order.status === "cho_xu_ly" && (
-            <Button variant="destructive" onClick={() => { cancelOrder(order.id); navigate(0); }}>
-              <XCircle className="w-4 h-4 mr-2" />
-              Hủy đơn hàng
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <Link to="/orders">
+              <Button variant="outline">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Quay lại
+              </Button>
+            </Link>
+            {order.canCancel && (
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelOrder}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4 mr-2" />
+                )}
+                Hủy đơn hàng
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -117,99 +187,110 @@ export default function OrderDetailPage() {
               Sản phẩm đã đặt
             </h3>
             <div className="space-y-4">
-              {order.items.map((i, index) => (
-                <div key={`${i.product.id}-${i.size}`}>
-                  <div className="flex items-center gap-4">
-                    <img 
-                      src={i.product.images[0] || i.product.thumbnail} 
-                      alt={i.product.title} 
-                      className="h-20 w-20 object-cover rounded-lg border" 
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-lg">{i.product.title}</div>
-                      <div className="text-sm text-muted-foreground mb-1">{i.product.brand}</div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <Badge variant="outline">Size {i.size}</Badge>
-                        <span>Số lượng: {i.quantity}</span>
+              {order.items.map((item) => (
+                <div key={item.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                  <img
+                    src={item.mainImage || "/placeholder-product.jpg"}
+                    alt={item.productVariant?.product?.name || 'Product'}
+                    className="w-16 h-16 object-cover rounded-md"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium">{item.productVariant?.product?.name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      SKU: {item.productVariant?.product?.skuId} | Size: {item.productVariant?.size?.nameSize}
+                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Số lượng: </span>
+                        <span className="font-medium">{item.quantity}</span>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-muted-foreground">Đơn giá</div>
-                      <div className="font-medium">{i.product.price.toLocaleString("vi-VN")}₫</div>
-                      <div className="text-sm text-muted-foreground">
-                        Tổng: {(i.product.price * i.quantity).toLocaleString("vi-VN")}₫
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Đơn giá: </span>
+                        <span className="font-medium">{formatPrice(item.productVariant?.price || 0)}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Thành tiền: </span>
+                        <span className="font-medium text-primary">{formatPrice(item.itemTotal || 0)}</span>
                       </div>
                     </div>
                   </div>
-                  {index < order.items.length - 1 && <Separator className="mt-4" />}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Order Summary & Shipping */}
+          {/* Order Summary & Info */}
           <div className="space-y-6">
             {/* Shipping Info */}
-            <div className="p-6 border rounded-xl bg-card">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Thông tin giao hàng
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="font-medium">{order.shippingAddress.name}</span>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5" />
+                  Thông tin giao hàng
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm">
+                  <p className="font-medium mb-2">Địa chỉ giao hàng:</p>
+                  <p className="text-muted-foreground">{order.deliveryAddress}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">{order.shippingAddress.phone}</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm">
-                    <div>{order.shippingAddress.address}</div>
-                    <div className="text-muted-foreground">{order.shippingAddress.city}</div>
+              </CardContent>
+            </Card>
+
+            {/* Order Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tổng kết đơn hàng</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>Tạm tính:</span>
+                    <span>{formatPrice(order.amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Phí vận chuyển:</span>
+                    <span>Miễn phí</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span>Tổng cộng:</span>
+                    <span className="text-primary">{formatPrice(order.amount)}</span>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Order Total */}
-            <div className="p-6 border rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
-              <h3 className="font-semibold mb-4">Tổng đơn hàng</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Tạm tính</span>
-                  <span>{order.total.toLocaleString("vi-VN")}₫</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Phí vận chuyển</span>
-                  <span className="text-green-600">Miễn phí</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-primary">{order.total.toLocaleString("vi-VN")}₫</span>
-                </div>
-              </div>
-            </div>
+            {/* Order Timeline */}
+            {order.statusTimeline && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Trạng thái đơn hàng</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {order.statusTimeline.map((step, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${step.completed ? "bg-green-500" : "bg-muted"}`} />
+                        <div className="flex-1">
+                          <span className={`text-sm ${step.completed ? "text-foreground" : "text-muted-foreground"}`}>
+                            {step.label}
+                          </span>
+                          {step.date && (
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(step.date).toLocaleString("vi-VN")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-6 border-t">
-          <Link to="/orders" className="flex items-center gap-2 text-primary hover:underline">
-            <ArrowLeft className="w-4 h-4" />
-            Quay lại danh sách đơn hàng
-          </Link>
-          
-          {order.status === "da_giao" && (
-            <Link to={`/products/${order.items[0]?.product.id}`}>
-              <Button variant="outline">
-                Mua lại sản phẩm
-              </Button>
-            </Link>
-          )}
-        </div>
       </section>
     </Layout>
   );

@@ -17,6 +17,7 @@ import OrdersPage from "./pages/orders/Orders";
 import OrderDetailPage from "./pages/orders/OrderDetail";
 import ProductDetail from "./pages/ProductDetail";
 import CategoriesPage from "./pages/Categories";
+import CheckoutPage from "./pages/Checkout";
 import { CartProvider } from "./state/cart";
 import { CartApiProvider } from "./state/cart-api";
 import { AuthProvider } from "./state/auth";
@@ -40,7 +41,7 @@ import CategoryView from "../admin/pages/categories/View";
 import CustomerNew from "../admin/pages/customers/New";
 import CustomerEdit from "../admin/pages/customers/Edit";
 import CustomerView from "../admin/pages/customers/View";
-import OrderView from "../admin/pages/orders/View";
+import OrderDetail from "../admin/pages/orders/OrderDetail";
 import AdminUsers from "../admin/pages/Users";
 import UserNew from "../admin/pages/users/new";
 import UserEdit from "../admin/pages/users/[id]";
@@ -128,10 +129,10 @@ const App = () => (
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/orders/:id" element={<OrderDetailPage />} />
+              <Route path="/orders" element={<UserProtectedRoute><OrdersPage /></UserProtectedRoute>} />
+              <Route path="/orders/:id" element={<UserProtectedRoute><OrderDetailPage /></UserProtectedRoute>} />
               <Route path="/cart" element={<Cart />} />
-              <Route path="/cart/checkout" element={<CartPage />} />
+              <Route path="/checkout" element={<UserProtectedRoute><CheckoutPage /></UserProtectedRoute>} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/profile" element={<UserProtectedRoute><ProfilePage /></UserProtectedRoute>} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -147,7 +148,7 @@ const App = () => (
               <Route path="/admin/categories/:id" element={<AdminProtectedRoute><AdminLayout><CategoryEdit /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/categories/:id/view" element={<AdminProtectedRoute><AdminLayout><CategoryView /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/orders" element={<AdminProtectedRoute><AdminLayout><AdminOrders /></AdminLayout></AdminProtectedRoute>} />
-              <Route path="/admin/orders/:id" element={<AdminProtectedRoute><AdminLayout><OrderView /></AdminLayout></AdminProtectedRoute>} />
+              <Route path="/admin/orders/:id" element={<AdminProtectedRoute><AdminLayout><OrderDetail /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/customers" element={<AdminProtectedRoute><AdminLayout><AdminCustomers /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/customers/new" element={<AdminProtectedRoute><AdminLayout><CustomerNew /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/customers/:id" element={<AdminProtectedRoute><AdminLayout><CustomerEdit /></AdminLayout></AdminProtectedRoute>} />
