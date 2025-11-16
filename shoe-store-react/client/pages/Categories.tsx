@@ -18,7 +18,10 @@ export default function CategoriesPage() {
   const categories = Array.isArray(categoriesData) 
     ? categoriesData 
     : ((categoriesData as any)?.categories || []);
+  
+  // Tách danh mục cha và con
   const parentCategories = categories.filter(cat => !cat.parentId);
+  const childCategories = categories.filter(cat => cat.parentId);
 
   return (
     <Layout>
@@ -40,44 +43,65 @@ export default function CategoriesPage() {
             Chưa có danh mục nào
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {parentCategories.map((category) => {
-              const childCategories = categories.filter(cat => cat.parentId === category.id);
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {categories.map((category) => {
+              const children = categories.filter(cat => cat.parentId === category.id);
+              const isParent = !category.parentId;
+              
               return (
-                <div key={category.id} className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
+                <div 
+                  key={category.id} 
+                  className="relative group border rounded-lg p-6 hover:shadow-lg transition-all duration-300 bg-white"
+                >
                   <Link 
                     to={`/products?category_id=${category.id}`}
-                    className="block group"
+                    className="block"
                   >
-                    <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
-                      {category.name}
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">
+                        {category.name}
+                      </h3>
+                      {children.length > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          {children.length} mục con
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground">
+                      {category.parent ? `Thuộc ${category.parent.name}` : 'Danh mục chính'}
+                    </p>
                   </Link>
-                  
-                  {childCategories.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-sm text-muted-foreground mb-2">Danh mục con:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {childCategories.map((child) => (
-                          <Link
-                            key={child.id}
-                            to={`/products?category_id=${child.id}`}
-                          >
-                            <Badge variant="secondary" className="hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
+
+                  {/* Dropdown hiển thị khi hover - chỉ cho danh mục cha có con */}
+                  {children.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                      <div className="p-4">
+                        <p className="text-sm font-medium text-muted-foreground mb-3">
+                          Danh mục con của {category.name}:
+                        </p>
+                        <div className="space-y-2">
+                          {children.map((child) => (
+                            <Link
+                              key={child.id}
+                              to={`/products?category_id=${child.id}`}
+                              className="block px-3 py-2 text-sm rounded-md hover:bg-primary hover:text-primary-foreground transition-colors"
+                            >
                               {child.name}
-                            </Badge>
+                            </Link>
+                          ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t">
+                          <Link
+                            to={`/products?category_id=${category.id}`}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Xem tất cả sản phẩm {category.name} →
                           </Link>
-                        ))}
+                        </div>
                       </div>
                     </div>
                   )}
-                  
-                  <Link
-                    to={`/products?category_id=${category.id}`}
-                    className="mt-4 inline-block text-sm text-primary hover:underline"
-                  >
-                    Xem tất cả →
-                  </Link>
                 </div>
               );
             })}

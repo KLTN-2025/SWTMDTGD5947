@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useProductSearch } from "@/hooks/useProducts";
 import type { Product, ProductSearchParams } from "@/lib/api-types";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -8,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { productApi } from "@/lib/product-api";
+import { categoryApi } from "@/lib/category-api";
 
 // These would ideally come from your categories API
 const STATUSES = [
@@ -22,8 +25,22 @@ export default function ProductsPage() {
   const { products, pagination, loading, error, searchProducts } = useProductSearch();
   const [searchInput, setSearchInput] = useState(sp.get("search") || "");
 
+  // Load categories for filter
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await categoryApi.getCategories();
+      return response.data;
+    }
+  });
+
+  const categories = Array.isArray(categoriesData) 
+    ? categoriesData 
+    : ((categoriesData as any)?.categories || []);
+
   const searchParams: ProductSearchParams = useMemo(() => ({
     keyword: sp.get("search") || undefined,
+    category_id: sp.get("category_id") ? Number(sp.get("category_id")) : undefined,
     status: (sp.get("status") as any) || undefined,
     min_price: sp.get("minPrice") ? Number(sp.get("minPrice")) : undefined,
     max_price: sp.get("maxPrice") ? Number(sp.get("maxPrice")) : undefined,
@@ -54,13 +71,36 @@ export default function ProductsPage() {
     setParam("search", searchInput);
   };
 
+  // Get selected category for display
+  const selectedCategory = categories.find(cat => cat.id === searchParams.category_id);
+
   return (
     <Layout>
       <section className="container py-8">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Tất cả sản phẩm</h1>
-            <p className="text-muted-foreground">Tìm kiếm và lọc giày theo nhu cầu của bạn.</p>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              {selectedCategory ? `Sản phẩm ${selectedCategory.name}` : 'Tất cả sản phẩm'}
+            </h1>
+            <p className="text-muted-foreground">
+              {selectedCategory 
+                ? `Khám phá các sản phẩm trong danh mục ${selectedCategory.name}`
+                : 'Tìm kiếm và lọc giày theo nhu cầu của bạn.'
+              }
+            </p>
+            {selectedCategory && (
+              <div className="mt-2">
+                <Badge variant="outline" className="text-sm">
+                  Đang lọc: {selectedCategory.name}
+                  <button 
+                    onClick={() => setParam("category_id", undefined)}
+                    className="ml-2 hover:text-destructive"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              </div>
+            )}
           </div>
           <div className="hidden md:flex items-center gap-2">
             <Input 
@@ -74,6 +114,38 @@ export default function ProductsPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           <aside className="md:col-span-3 space-y-6">
+            {/* Category Filter */}
+            <div>
+              <h3 className="font-semibold mb-3">Danh mục</h3>
+              <div className="space-y-2">
+                <Button 
+                  variant={!searchParams.category_id ? "default" : "secondary"} 
+                  onClick={() => setParam("category_id", undefined)}
+                  className="w-full justify-start"
+                >
+                  Tất cả danh mục
+                </Button>
+                {categories.map((category) => (
+                  <Button 
+                    key={category.id} 
+                    variant={searchParams.category_id === category.id ? "default" : "secondary"} 
+                    onClick={() => setParam("category_id", searchParams.category_id === category.id ? undefined : category.id)}
+                    className="w-full justify-start"
+                  >
+                    <span className="truncate">
+                      {category.parentId ? `↳ ${category.name}` : category.name}
+                    </span>
+                    {category.parentId && (
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        Con
+                      </Badge>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Separator />
+            
             <div>
               <h3 className="font-semibold mb-3">Trạng thái</h3>
               <div className="flex flex-wrap gap-2">
@@ -143,8 +215,8 @@ export default function ProductsPage() {
             {error && <div className="py-20 text-center text-destructive">{error}</div>}
             {!loading && !error && (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                {products.map((product: Product) => (
-                  <ProductCard key={product.id} product={product} />
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product as any} />
                 ))}
               </div>
             )}

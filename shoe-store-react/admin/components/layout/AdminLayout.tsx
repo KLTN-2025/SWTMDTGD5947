@@ -1,8 +1,10 @@
 import { ReactNode, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/state/auth";
+import { toast } from "sonner";
 import { 
   BarChart3, 
   Box, 
@@ -22,6 +24,18 @@ import {
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Đăng xuất thành công");
+      navigate("/auth");
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi đăng xuất");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -78,11 +92,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
               {/* Profile dropdown */}
               <div className="flex items-center gap-x-2">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">A</span>
-                </div>
+                {user?.imageUrl ? (
+                  <img 
+                    src={user.imageUrl} 
+                    alt={user.name}
+                    className="h-8 w-8 rounded-full object-cover border"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">
+                      {user?.name?.charAt(0).toUpperCase() || 'A'}
+                    </span>
+                  </div>
+                )}
                 <span className="hidden lg:flex lg:items-center">
-                  <span className="ml-2 text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100">Admin</span>
+                  <span className="ml-2 text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100">
+                    {user?.name || 'Admin'}
+                  </span>
                 </span>
               </div>
             </div>
@@ -101,6 +127,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 }
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Đăng xuất thành công");
+      navigate("/auth");
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi đăng xuất");
+    }
+  };
   const navigation = [
     { name: 'Tổng quan', href: '/admin', icon: Home, current: false, badge: null },
     { name: 'Sản phẩm', href: '/admin/products', icon: Box, current: false, badge: '156' },
@@ -165,13 +203,13 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                 <Settings className="h-6 w-6 shrink-0" />
                 Cài đặt
               </NavLink>
-              <a
-                href="/"
-                className="text-gray-700 hover:text-blue-700 hover:bg-gray-50 group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-700"
+              <button
+                onClick={handleLogout}
+                className="w-full text-left text-gray-700 hover:text-blue-700 hover:bg-gray-50 group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-700"
               >
                 <LogOut className="h-6 w-6 shrink-0" />
-                Về trang khách
-              </a>
+                Đăng xuất
+              </button>
             </div>
           </li>
         </ul>

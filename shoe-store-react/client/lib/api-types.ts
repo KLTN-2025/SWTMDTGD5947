@@ -61,7 +61,8 @@ export interface Category {
 
 export interface Size {
   id: number;
-  name: string;
+  nameSize: string;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -129,6 +130,100 @@ export interface ProductSearchParams {
   sort_order?: 'asc' | 'desc';
   per_page?: number;
   page?: number;
+}
+
+// Order & Checkout Types
+export interface OrderItem {
+  id: number;
+  quantity: number;
+  amount: number;
+  itemTotal: number;
+  mainImage: string;
+  productVariant: {
+    id: number;
+    price: number;
+    product: {
+      id: number;
+      name: string;
+      skuId: string;
+      description?: string;
+    };
+    size: {
+      id: number;
+      nameSize: string;
+    };
+  };
+}
+
+export interface OrderStatusTimeline {
+  status: string;
+  label: string;
+  completed: boolean;
+  date: string | null;
+}
+
+export interface Order {
+  id: number;
+  status: 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED';
+  statusDisplay: string;
+  amount: number;
+  deliveryAddress: string;
+  paymentMethod: 'CASH' | 'CREDIT_CARD' | 'E_WALLET' | 'BANK_TRANSFER';
+  paymentStatus: 'UNPAID' | 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED';
+  paymentStatusDisplay: string;
+  itemCount: number;
+  totalQuantity: number;
+  canCancel: boolean;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItem[];
+  statusTimeline?: OrderStatusTimeline[];
+}
+
+export interface OrdersData {
+  orders: Order[];
+  pagination: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+  };
+}
+
+export interface CheckoutCalculation {
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+  items: OrderItem[];
+  itemCount: number;
+  totalQuantity: number;
+}
+
+export interface CheckoutRequest {
+  deliveryAddress: string;
+  paymentMethod?: 'CASH' | 'CREDIT_CARD' | 'E_WALLET' | 'BANK_TRANSFER';
+}
+
+export interface CheckoutResponse {
+  order: Order;
+  nextStep: 'order_confirmed' | 'payment_required';
+}
+
+// Cart Response (from cart-api.ts)
+export interface CartResponse {
+  cartId: number;
+  cartItems: any[]; // Use existing CartItemResponse from cart-api.ts
+  totalItems: number;
+  totalAmount: number;
+  summary: {
+    itemCount: number;
+    totalQuantity: number;
+    totalAmount: number;
+    currency: string;
+  };
 }
 
 // Error Types

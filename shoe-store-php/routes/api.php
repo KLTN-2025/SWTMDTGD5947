@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
@@ -10,7 +13,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// ============================================================================
+// ==========================-0==================================================
 // AUTHENTICATION ROUTES
 // ============================================================================
 Route::group(['prefix' => 'auth'], function () {
@@ -46,6 +49,26 @@ Route::group(['prefix' => 'cart', 'middleware' => ['user']], function () {
     Route::put('/items/{cartItemId}', [CartController::class, 'updateCartItem']);
     Route::delete('/items/{cartItemId}', [CartController::class, 'deleteCartItem']);
     Route::delete('/clear', [CartController::class, 'clearCart']);
+});
+
+// Checkout & Orders
+Route::group(['prefix' => 'checkout', 'middleware' => ['user']], function () {
+    Route::get('/calculate', [OrderController::class, 'calculateCheckout']);
+    Route::post('/', [OrderController::class, 'checkout']);
+});
+
+Route::group(['prefix' => 'orders', 'middleware' => ['user']], function () {
+    Route::get('/', [OrderController::class, 'index']);
+    Route::get('/{id}', [OrderController::class, 'show']);
+    Route::put('/{id}/cancel', [OrderController::class, 'cancel']);
+});
+
+// Payments
+Route::group(['prefix' => 'payments'], function () {
+    Route::post('/', [PaymentController::class, 'processPayment'])->middleware('user');
+    Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
+    Route::get('/return', [PaymentController::class, 'paymentReturn']);
+    Route::post('/webhook', [PaymentController::class, 'paymentWebhook']);
 });
 
 // Categories
@@ -93,5 +116,13 @@ Route::group(['prefix' => 'admin', 'middleware' => ['admin']], function () {
         Route::put('/{id}', [UserController::class, 'update']);
         Route::post('/{id}', [UserController::class, 'update']);
         Route::delete('/{id}', [UserController::class, 'destroy']);
+    });
+
+    // Orders Management
+    Route::group(['prefix' => 'orders'], function () {
+        Route::get('/', [AdminOrderController::class, 'index']);
+        Route::get('/{id}', [AdminOrderController::class, 'show']);
+        Route::put('/{id}/status', [AdminOrderController::class, 'updateStatus']);
+        Route::post('/{id}/cancel', [AdminOrderController::class, 'cancel']);
     });
 });

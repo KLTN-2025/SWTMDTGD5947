@@ -71,16 +71,22 @@ class ApiClient {
 
   // GET request
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-    const url = new URL(`${this.baseURL}${endpoint}`);
+    let finalEndpoint = endpoint;
+    
     if (params) {
+      const searchParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          url.searchParams.append(key, String(value));
+          searchParams.append(key, String(value));
         }
       });
+      
+      if (searchParams.toString()) {
+        finalEndpoint += (endpoint.includes('?') ? '&' : '?') + searchParams.toString();
+      }
     }
 
-    return this.request<T>(endpoint + (url.search ? `?${url.searchParams}` : ''));
+    return this.request<T>(finalEndpoint);
   }
 
   // POST request
@@ -183,12 +189,14 @@ class ApiError extends Error {
   public status: false;
   public msgCode: string;
   public apiMessage: string | Record<string, string[]>;
+  public errorData: any;
 
   constructor(errorData: {
     code: number;
     status: false;
     msgCode: string;
     message: string | Record<string, string[]>;
+    errors?: string[];
   }) {
     // Use the actual API message or first validation error
     const displayMessage = typeof errorData.message === 'string' 
@@ -201,12 +209,28 @@ class ApiError extends Error {
     this.status = errorData.status;
     this.msgCode = errorData.msgCode;
     this.apiMessage = errorData.message;
+    this.errorData = errorData;
   }
 
   // Helper to get validation errors
   getValidationErrors(): Record<string, string[]> | null {
-    if (typeof this.apiMessage === 'object') {
+    if (typeof this.apiMessage === 'object' && !Array.isArray(this.apiMessage) && !('errors' in this.apiMessage)) {
       return this.apiMessage;
+    }
+    return null;
+  }
+
+  // Helper to get errors array from backend
+  getErrorsArray(): string[] | null {
+    // Check in errorData first (full response)
+    if (this.errorData && this.errorData.errors && Array.isArray(this.errorData.errors)) {
+      return this.errorData.errors;
+    }
+    
+    // Fallback to check in apiMessage
+    if (typeof this.apiMessage === 'object' && 'errors' in this.apiMessage) {
+      const errors = (this.apiMessage as any).errors;
+      return Array.isArray(errors) ? errors : null;
     }
     return null;
   }

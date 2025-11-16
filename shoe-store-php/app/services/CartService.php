@@ -128,6 +128,22 @@ class CartService {
       ];
     }
 
+    // Kiểm tra tồn kho
+    $product = $productVariant->product;
+    $requestedQuantity = (int)$request->quantity;
+    
+    if ($requestedQuantity > $product->quantity) {
+      return [
+        'isValid' => false,
+        'response' => [
+          'code' => HttpCode::BAD_REQUEST,
+          'status' => false,
+          'msgCode' => MsgCode::VALIDATION_ERROR,
+          'message' => "Sản phẩm '{$product->name}' chỉ còn {$product->quantity} sản phẩm"
+        ]
+      ];
+    }
+
     return [
       'isValid' => true,
       'productVariant' => $productVariant
@@ -146,8 +162,24 @@ class CartService {
           ->first();
 
         if ($existingCartItem) {
-          // Nếu đã có, cộng thêm quantity
-          $existingCartItem->quantity += $request->quantity;
+          // Nếu đã có, kiểm tra tổng quantity không vượt quá tồn kho
+          $newTotalQuantity = $existingCartItem->quantity + $request->quantity;
+          $product = $productVariant->product;
+          
+          if ($newTotalQuantity > $product->quantity) {
+            return [
+              'isAdded' => false,
+              'response' => [
+                'code' => HttpCode::BAD_REQUEST,
+                'status' => false,
+                'msgCode' => MsgCode::VALIDATION_ERROR,
+                'message' => "Sản phẩm '{$product->name}' chỉ còn {$product->quantity} sản phẩm. Bạn đã có {$existingCartItem->quantity} trong giỏ hàng."
+              ]
+            ];
+          }
+          
+          // Cộng thêm quantity
+          $existingCartItem->quantity = $newTotalQuantity;
           $existingCartItem->save();
           $cartItem = $existingCartItem;
         } else {
@@ -295,14 +327,16 @@ class CartService {
   // ============================================================================
   
   public function updateCartItem($user, $cartItemId, $request) {
-    $validationResult = $this->validateUpdateCartItem($request);
-    if (!$validationResult['isValid']) {
-      return $validationResult['response'];
-    }
-
+    // Tìm cart item trước
     $cartItemResult = $this->findUserCartItem($user, $cartItemId);
     if (!$cartItemResult['isFound']) {
       return $cartItemResult['response'];
+    }
+
+    // Validate với cartItem để kiểm tra tồn kho
+    $validationResult = $this->validateUpdateCartItem($request, $cartItemResult['cartItem']);
+    if (!$validationResult['isValid']) {
+      return $validationResult['response'];
     }
 
     $updateResult = $this->performUpdateCartItem($cartItemResult['cartItem'], $request);
@@ -313,7 +347,7 @@ class CartService {
     return $updateResult['response'];
   }
 
-  private function validateUpdateCartItem($request) {
+  private function validateUpdateCartItem($request, $cartItem = null) {
     if (!$request->has('quantity') || empty($request->quantity)) {
       return [
         'isValid' => false,
@@ -336,6 +370,24 @@ class CartService {
           'message' => 'quantity phải là số nguyên dương'
         ]
       ];
+    }
+
+    // Kiểm tra tồn kho nếu có cartItem
+    if ($cartItem) {
+      $product = $cartItem->productVariant->product;
+      $requestedQuantity = (int)$request->quantity;
+      
+      if ($requestedQuantity > $product->quantity) {
+        return [
+          'isValid' => false,
+          'response' => [
+            'code' => HttpCode::BAD_REQUEST,
+            'status' => false,
+            'msgCode' => MsgCode::VALIDATION_ERROR,
+            'message' => "Sản phẩm '{$product->name}' chỉ còn {$product->quantity} sản phẩm"
+          ]
+        ];
+      }
     }
 
     return ['isValid' => true];
