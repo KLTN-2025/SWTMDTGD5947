@@ -377,6 +377,272 @@ export class ColorApi {
 
 export const colorApi = new ColorApi();
 
+// Customer Types
+export interface CustomerProfile {
+  id: number;
+  userId: number;
+  phoneNumber?: string | null;
+  address?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Customer {
+  id: number;
+  name: string;
+  userName: string;
+  email: string;
+  imageUrl?: string | null;
+  fullImageUrl?: string | null;
+  isActive: boolean;
+  roleId: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  role?: {
+    id: number;
+    name: string;
+  };
+  profile?: CustomerProfile;
+  totalOrders?: number;
+  totalSpent?: number;
+  totalReviews?: number;
+  totalCartItems?: number;
+  recentOrders?: any[];
+}
+
+export interface CreateCustomerRequest {
+  name: string;
+  userName: string;
+  email: string;
+  password?: string;
+  isActive?: boolean;
+  image?: File;
+  phoneNumber?: string;
+  address?: string;
+}
+
+export interface UpdateCustomerRequest {
+  name?: string;
+  userName?: string;
+  email?: string;
+  password?: string;
+  isActive?: boolean;
+  image?: File;
+  phoneNumber?: string;
+  address?: string;
+}
+
+export interface CustomersResponse {
+  customers: Customer[];
+  pagination: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+  };
+}
+
+export class CustomerApi {
+  private baseUrl = '/admin/customers';
+
+  // Get all customers
+  async getCustomers(params?: {
+    per_page?: number;
+    search?: string;
+    is_active?: boolean;
+    min_spent?: number;
+    max_spent?: number;
+    min_orders?: number;
+    max_orders?: number;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+    page?: number;
+  }): Promise<ApiResponse<CustomersResponse>> {
+    return apiClient.get<CustomersResponse>(this.baseUrl, params);
+  }
+
+  // Get single customer
+  async getCustomer(id: number): Promise<ApiResponse<Customer>> {
+    return apiClient.get<Customer>(`${this.baseUrl}/${id}`);
+  }
+
+  // Create customer
+  async createCustomer(data: CreateCustomerRequest): Promise<ApiResponse<Customer>> {
+    const formData = new FormData();
+    
+    formData.append('name', data.name);
+    formData.append('userName', data.userName);
+    formData.append('email', data.email);
+    
+    if (data.password) {
+      formData.append('password', data.password);
+    }
+    
+    if (data.isActive !== undefined) {
+      formData.append('isActive', data.isActive ? '1' : '0');
+    }
+    
+    if (data.image) {
+      formData.append('image', data.image);
+    }
+    
+    if (data.phoneNumber) {
+      formData.append('phoneNumber', data.phoneNumber);
+    }
+    
+    if (data.address) {
+      formData.append('address', data.address);
+    }
+
+    return apiClient.postFormData<Customer>(this.baseUrl, formData);
+  }
+
+  // Update customer
+  async updateCustomer(id: number, data: UpdateCustomerRequest): Promise<ApiResponse<Customer>> {
+    const formData = new FormData();
+    
+    if (data.name) {
+      formData.append('name', data.name);
+    }
+    
+    if (data.userName) {
+      formData.append('userName', data.userName);
+    }
+    
+    if (data.email) {
+      formData.append('email', data.email);
+    }
+    
+    if (data.password) {
+      formData.append('password', data.password);
+    }
+    
+    if (data.isActive !== undefined) {
+      formData.append('isActive', data.isActive ? '1' : '0');
+    }
+    
+    if (data.image) {
+      formData.append('image', data.image);
+    }
+    
+    if (data.phoneNumber !== undefined) {
+      formData.append('phoneNumber', data.phoneNumber || '');
+    }
+    
+    if (data.address !== undefined) {
+      formData.append('address', data.address || '');
+    }
+
+    return apiClient.postFormData<Customer>(`${this.baseUrl}/${id}`, formData);
+  }
+
+  // Delete customer
+  async deleteCustomer(id: number): Promise<ApiResponse<null>> {
+    return apiClient.delete<null>(`${this.baseUrl}/${id}`);
+  }
+}
+
+export const customerApi = new CustomerApi();
+
+// Chatbox Types
+export interface ChatBoxUserSummary {
+  id: number;
+  name: string;
+  email: string;
+  avatar?: string | null;
+  isActive: boolean;
+  phoneNumber?: string | null;
+  address?: string | null;
+}
+
+export interface ChatBoxCategorySummary {
+  id: number;
+  name: string;
+}
+
+export interface ChatBoxSummary {
+  id: number;
+  mode: string;
+  modeLabel: string;
+  category?: ChatBoxCategorySummary | null;
+  user?: ChatBoxUserSummary | null;
+  totalMessages: number;
+  lastMessage?: string | null;
+  lastMessageRole?: string | null;
+  lastMessageAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ChatBoxStats {
+  totalConversations: number;
+  activeConversations: number;
+  totalMessages: number;
+  modeBreakdown: Array<{
+    mode: string;
+    label: string;
+    count: number;
+  }>;
+  availableModes: Record<string, string>;
+}
+
+export interface ChatBoxPagination {
+  total: number;
+  per_page: number;
+  current_page: number;
+  last_page: number;
+  from: number | null;
+  to: number | null;
+}
+
+export interface ChatBoxListResponse {
+  chatBoxes: ChatBoxSummary[];
+  pagination: ChatBoxPagination;
+  stats: ChatBoxStats;
+}
+
+export interface ChatBoxHistoryEntry {
+  id: number;
+  role: 'assistant' | 'user' | 'system';
+  message: string;
+  createdAt: string;
+  meta?: Record<string, any> | null;
+}
+
+export interface ChatBoxDetailResponse {
+  chatBox: ChatBoxSummary & {
+    user?: ChatBoxUserSummary | null;
+  };
+  history: ChatBoxHistoryEntry[];
+}
+
+class AdminChatBoxApi {
+  private baseUrl = '/admin/chat-box/messages';
+
+  async getConversations(params?: {
+    search?: string;
+    mode?: string;
+    per_page?: number;
+    page?: number;
+  }): Promise<ApiResponse<ChatBoxListResponse>> {
+    return apiClient.get<ChatBoxListResponse>(this.baseUrl, params);
+  }
+
+  async getConversation(id: number | string): Promise<ApiResponse<ChatBoxDetailResponse>> {
+    return apiClient.get<ChatBoxDetailResponse>(`${this.baseUrl}/${id}`);
+  }
+
+  async deleteConversation(id: number | string): Promise<ApiResponse<null>> {
+    return apiClient.delete<null>(`${this.baseUrl}/${id}`);
+  }
+}
+
+export const adminChatBoxApi = new AdminChatBoxApi();
+
 // Admin API instance for orders
 class AdminApi {
   private baseUrl = '/admin';

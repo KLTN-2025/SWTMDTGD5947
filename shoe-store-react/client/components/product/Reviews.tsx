@@ -115,14 +115,14 @@ const ReviewCard = ({ review, productId, onUpdate, onDelete }: {
 
   return (
     <>
-      <div className="border rounded-xl p-6 bg-card">
-        <div className="flex items-start gap-4">
-          <Avatar className="w-10 h-10">
+    <div className="border rounded-xl p-6 bg-card">
+      <div className="flex items-start gap-4">
+        <Avatar className="w-10 h-10">
             <AvatarImage src={userAvatar} />
             <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1">
+        </Avatar>
+        
+        <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">{userName}</h4>
               {isOwner && (
@@ -202,34 +202,34 @@ const ReviewCard = ({ review, productId, onUpdate, onDelete }: {
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 mb-3">
-              <StarRating rating={review.rating} />
-              <span className="text-sm text-muted-foreground">
-                {new Date(review.createdAt).toLocaleDateString("vi-VN")}
-              </span>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-sm leading-relaxed">
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2 mb-3">
+            <StarRating rating={review.rating} />
+            <span className="text-sm text-muted-foreground">
+              {new Date(review.createdAt).toLocaleDateString("vi-VN")}
+            </span>
+          </div>
+          
+          <div className="mb-3">
+            <p className="text-sm leading-relaxed">
                 {review.comment && isLongComment && !showFullComment
-                  ? `${review.comment.substring(0, 150)}...`
+                ? `${review.comment.substring(0, 150)}...`
                   : review.comment || 'Không có nhận xét'}
-              </p>
-              {isLongComment && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto text-xs"
-                  onClick={() => setShowFullComment(!showFullComment)}
-                >
-                  {showFullComment ? "Thu gọn" : "Xem thêm"}
-                </Button>
-              )}
-            </div>
-            
+            </p>
+            {isLongComment && (
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 h-auto text-xs"
+                onClick={() => setShowFullComment(!showFullComment)}
+              >
+                {showFullComment ? "Thu gọn" : "Xem thêm"}
+              </Button>
+            )}
+          </div>
+          
           </div>
         </div>
       </div>
@@ -265,17 +265,17 @@ export function Reviews({ reviews, productId }: ReviewsProps) {
 
     // Sort
     filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case "oldest":
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case "rating":
-          return b.rating - a.rating;
-        default:
-          return 0;
-      }
-    });
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case "oldest":
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case "rating":
+        return b.rating - a.rating;
+      default:
+        return 0;
+    }
+  });
     
     return filtered;
   }, [reviews, filterRating, sortBy]);
@@ -292,14 +292,14 @@ export function Reviews({ reviews, productId }: ReviewsProps) {
     <div className="space-y-6">
       {/* Rating Overview */}
       {totalReviews > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-xl bg-muted/30">
-          <div className="text-center">
-            <div className="text-4xl font-bold mb-2">{averageRating.toFixed(1)}</div>
-            <StarRating rating={Math.round(averageRating)} size="w-6 h-6" />
-            <div className="text-sm text-muted-foreground mt-2">
-              {totalReviews} đánh giá
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border rounded-xl bg-muted/30">
+        <div className="text-center">
+          <div className="text-4xl font-bold mb-2">{averageRating.toFixed(1)}</div>
+          <StarRating rating={Math.round(averageRating)} size="w-6 h-6" />
+          <div className="text-sm text-muted-foreground mt-2">
+            {totalReviews} đánh giá
           </div>
+        </div>
         
         <div className="space-y-2">
           {[5, 4, 3, 2, 1].map((rating, idx) => (

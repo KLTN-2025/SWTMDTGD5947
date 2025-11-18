@@ -7,6 +7,12 @@ export default defineConfig({
   server: {
     host: "::",
     port: 5001,
+    allowedHosts: [
+      "504cbe621956.ngrok-free.app",
+      "b92a22a3f13d.ngrok-free.app",
+      ".ngrok-free.app", // Allow all ngrok subdomains
+      "localhost",
+    ],
   },
   build: {
     outDir: "dist",

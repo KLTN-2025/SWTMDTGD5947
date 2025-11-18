@@ -11,8 +11,9 @@ import { useCartApi } from "@/state/cart-api";
 import { useAuth } from "@/state/auth";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Star, Package, Tag, ShoppingCart, ArrowLeft, User } from "lucide-react";
+import { Star, Package, Tag, ShoppingCart, ArrowLeft, User, Share2 } from "lucide-react";
 import { Reviews } from "@/components/product/Reviews";
+import { ShareDialog } from "@/components/product/ShareDialog";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export default function ProductDetail() {
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   
   // Create review mutation
   const createReviewMutation = useMutation({
@@ -325,14 +327,13 @@ export default function ProductDetail() {
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Thêm vào giỏ
                   </Button>
-                  <Button variant="secondary" size="lg" asChild>
-                    <a 
-                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`} 
-                      target="_blank" 
-                      rel="noreferrer"
-                    >
-                      Chia sẻ
-                    </a>
+                  <Button 
+                    variant="secondary" 
+                    size="lg"
+                    onClick={() => setShareDialogOpen(true)}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Chia sẻ
                   </Button>
                 </div>
 
@@ -472,6 +473,16 @@ export default function ProductDetail() {
               <Reviews reviews={product.reviews || []} productId={product.id} />
             </div>
           </>
+        )}
+
+        {/* Share Dialog */}
+        {product && (
+          <ShareDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            productId={product.id}
+            productName={product.name}
+          />
         )}
         
         <div className="mt-10">

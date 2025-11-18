@@ -1,5 +1,4 @@
-import { useState, useMemo } from "react";
-import { db } from "../lib/store";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,80 +11,96 @@ import { toast } from "sonner";
 import { 
   Bot, 
   MessageCircle, 
-  Users, 
   TrendingUp, 
   Search, 
-  Filter, 
   Trash2, 
-  Eye, 
   Clock, 
   CheckCircle, 
-  AlertCircle,
   BarChart3,
-  Settings,
   Download,
   RefreshCw,
   Send,
   User,
-  Zap
+  Zap,
+  Loader2
 } from "lucide-react";
+import { useAdminChatConversations, useAdminChatConversationDetail } from "../lib/use-chat-box";
+import { adminChatBoxApi } from "../lib/admin-api";
+import { getErrorMessage } from "../lib/error-handler";
 
 export default function Chatbot() {
   const [activeTab, setActiveTab] = useState("conversations");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [corpus, setCorpus] = useState(db.getChatbot().corpus);
+  const [modeFilter, setModeFilter] = useState("all");
+  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const perPage = 12;
+  const [corpus, setCorpus] = useState("");
   const [isTraining, setIsTraining] = useState(false);
-  
-  const chatMessages = db.listChatMessages();
-  const chatHistories = db.listChatHistories();
-  const customers = db.listCustomers();
-  const categories = db.listCategories();
-  
-  // Filter conversations based on search
-  const filteredConversations = useMemo(() => {
-    return chatMessages.filter(msg => {
-      const customer = customers.find(c => c.id === msg.userId);
-      const histories = chatHistories.filter(h => h.chatBoxId === msg.id);
-      const searchText = searchQuery.toLowerCase();
-      
-      return (
-        customer?.name.toLowerCase().includes(searchText) ||
-        customer?.email.toLowerCase().includes(searchText) ||
-        histories.some(h => h.message.toLowerCase().includes(searchText))
-      );
-    });
-  }, [chatMessages, customers, chatHistories, searchQuery]);
-  
-  // Calculate stats
-  const totalConversations = chatMessages.length;
-  const activeConversations = chatMessages.filter(msg => {
-    const lastHistory = chatHistories
-      .filter(h => h.chatBoxId === msg.id)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-    return lastHistory && new Date(lastHistory.createdAt).getTime() > Date.now() - 24 * 60 * 60 * 1000;
-  }).length;
-  
-  const totalMessages = chatHistories.length;
-  const avgResponseTime = "2.3s"; // Mock data
-  
-  const handleTrain = async () => {
-    setIsTraining(true);
-    // Simulate training delay
-    setTimeout(() => {
-      db.updateChatbot({ corpus });
-      setIsTraining(false);
-      toast.success("Đã cập nhật và huấn luyện dữ liệu chatbot thành công!");
-    }, 2000);
-  };
-  
-  const handleDeleteConversation = (id: string) => {
-    db.deleteChatMessage(id);
-    if (selectedConversation === id) {
+  const [lastTrainedAt, setLastTrainedAt] = useState<string | null>(null);
+
+  const { chatBoxes, stats, pagination, loading, refetch } = useAdminChatConversations({
+    search: searchQuery || undefined,
+    mode: modeFilter !== "all" ? modeFilter : undefined,
+    per_page: perPage,
+    page,
+  });
+
+  useEffect(() => {
+    if (!chatBoxes || chatBoxes.length === 0) {
       setSelectedConversation(null);
+      return;
     }
-    toast.success("Đã xóa cuộc trò chuyện");
+    if (selectedConversation === null) {
+      setSelectedConversation(chatBoxes[0].id);
+      return;
+    }
+    const exists = chatBoxes.some((chat) => chat.id === selectedConversation);
+    if (!exists) {
+      setSelectedConversation(chatBoxes[0].id);
+    }
+  }, [chatBoxes, selectedConversation]);
+
+  const topMode = useMemo(() => {
+    if (!stats?.modeBreakdown?.length) return null;
+    return [...stats.modeBreakdown].sort((a, b) => b.count - a.count)[0];
+  }, [stats?.modeBreakdown]);
+
+  const modeOptions = useMemo(() => {
+    const options = [{ value: "all", label: "Tất cả chế độ" }];
+    if (stats?.availableModes) {
+      Object.entries(stats.availableModes).forEach(([value, label]) => {
+        options.push({ value, label });
+      });
+    }
+    return options;
+  }, [stats?.availableModes]);
+
+  const handleTrain = () => {
+    setIsTraining(true);
+    setTimeout(() => {
+      setIsTraining(false);
+      setLastTrainedAt(new Date().toISOString());
+      toast.success("Huấn luyện dữ liệu chatbot thành công!");
+    }, 1800);
   };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
+
+  const handleModeChange = (value: string) => {
+    setModeFilter(value);
+    setPage(1);
+  };
+
+  const handleConversationDeleted = () => {
+    setSelectedConversation(null);
+    refetch();
+  };
+
+  const totalPages = pagination?.last_page ?? 1;
 
   return (
     <div className="space-y-6">
@@ -102,7 +117,7 @@ export default function Chatbot() {
             <Download className="h-4 w-4 mr-2" />
             Xuất dữ liệu
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm mới
           </Button>
@@ -117,14 +132,14 @@ export default function Chatbot() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng cuộc trò chuyện</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">{totalConversations}</p>
+                  <p className="text-2xl font-bold">{stats?.totalConversations ?? 0}</p>
                   <Badge variant="outline" className="text-blue-600 border-blue-200">
                     <TrendingUp className="h-3 w-3 mr-1" />
-                    +12%
+                    Live
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {activeConversations} đang hoạt động
+                  {stats?.activeConversations ?? 0} đang hoạt động trong 24h
                 </p>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
@@ -140,14 +155,14 @@ export default function Chatbot() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng tin nhắn</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">{totalMessages}</p>
+                  <p className="text-2xl font-bold">{stats?.totalMessages ?? 0}</p>
                   <Badge variant="outline" className="text-green-600 border-green-200">
                     <TrendingUp className="h-3 w-3 mr-1" />
-                    +8%
+                    +Realtime
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Hôm nay: {Math.floor(totalMessages / 7)}
+                  Trang hiện tại: {chatBoxes.length}
                 </p>
               </div>
               <div className="p-3 bg-green-100 rounded-full">
@@ -163,14 +178,14 @@ export default function Chatbot() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Thời gian phản hồi</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">{avgResponseTime}</p>
+                  <p className="text-2xl font-bold">--</p>
                   <Badge variant="outline" className="text-purple-600 border-purple-200">
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    Tốt
+                    Đang thu thập
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Mục tiêu: &lt;3s
+                  Sẽ cập nhật khi đủ dữ liệu
                 </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-full">
@@ -184,16 +199,18 @@ export default function Chatbot() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Độ chính xác AI</p>
+                <p className="text-sm font-medium text-gray-600">Chế độ phổ biến</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">94.2%</p>
+                  <p className="text-2xl font-bold">
+                    {topMode ? `${topMode.count}` : '0'}
+                  </p>
                   <Badge variant="outline" className="text-orange-600 border-orange-200">
                     <Zap className="h-3 w-3 mr-1" />
-                    Cao
+                    {topMode?.label || 'N/A'}
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Cải thiện +2.1%
+                  {topMode ? `Mã: ${topMode.mode}` : 'Chưa có thống kê'}
                 </p>
               </div>
               <div className="p-3 bg-orange-100 rounded-full">
@@ -220,68 +237,116 @@ export default function Chatbot() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span>Cuộc trò chuyện ({filteredConversations.length})</span>
+                    <span>Cuộc trò chuyện ({pagination?.total ?? 0})</span>
                   </CardTitle>
-                  <div className="relative">
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input 
+                        placeholder="Tìm kiếm tên, email hoặc nội dung..." 
+                        value={searchQuery} 
+                        onChange={e => handleSearchChange(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input 
-                      placeholder="Tìm kiếm cuộc trò chuyện..." 
-                      value={searchQuery} 
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
+                    <Select value={modeFilter} onValueChange={handleModeChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn chế độ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modeOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="max-h-96 overflow-y-auto">
-                    {filteredConversations.map(msg => {
-                      const customer = customers.find(c => c.id === msg.userId);
-                      const histories = chatHistories.filter(h => h.chatBoxId === msg.id);
-                      const lastMessage = histories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-                      const category = categories.find(c => c.id === msg.categoryId);
-                      
-                      return (
-                        <div 
-                          key={msg.id} 
-                          className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                            selectedConversation === msg.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                          }`}
-                          onClick={() => setSelectedConversation(msg.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={customer?.avatar} />
-                              <AvatarFallback>
-                                <User className="h-5 w-5" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium truncate">{customer?.name || 'Khách vãng lai'}</h4>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(msg.createdAt).toLocaleDateString('vi-VN')}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-600 truncate">
-                                {lastMessage?.message || 'Chưa có tin nhắn'}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                {category && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {category.name}
+                    {loading && (
+                      <div className="flex items-center justify-center py-10">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                      </div>
+                    )}
+                    {!loading && chatBoxes.length === 0 && (
+                      <div className="py-10 text-center text-gray-500">
+                        Chưa có cuộc trò chuyện nào.
+                      </div>
+                    )}
+                    {chatBoxes.map(conversation => (
+                      <div 
+                        key={conversation.id} 
+                        className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
+                          selectedConversation === conversation.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                        }`}
+                        onClick={() => setSelectedConversation(conversation.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={conversation.user?.avatar || undefined} />
+                            <AvatarFallback>
+                              <User className="h-5 w-5" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium truncate">{conversation.user?.name || 'Khách vãng lai'}</h4>
+                              <span className="text-xs text-gray-500">
+                                {conversation.lastMessageAt
+                                  ? new Date(conversation.lastMessageAt).toLocaleDateString('vi-VN')
+                                  : '--'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 truncate">
+                              {conversation.lastMessage || 'Chưa có tin nhắn'}
+                            </p>
+                            <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {conversation.modeLabel}
+                                </Badge>
+                                {conversation.category && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {conversation.category.name}
                                   </Badge>
                                 )}
-                                <div className="flex items-center gap-1">
-                                  <MessageCircle className="h-3 w-3 text-gray-400" />
-                                  <span className="text-xs text-gray-500">{histories.length}</span>
-                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <MessageCircle className="h-3 w-3 text-gray-400" />
+                                <span>{conversation.totalMessages}</span>
                               </div>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
+                  {pagination && pagination.last_page > 1 && (
+                    <div className="flex items-center justify-between p-4 border-t text-sm text-gray-600">
+                      <span>Trang {pagination.current_page}/{pagination.last_page}</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={pagination.current_page === 1}
+                          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        >
+                          Trước
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={pagination.current_page === totalPages}
+                          onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                        >
+                          Sau
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -292,7 +357,7 @@ export default function Chatbot() {
                 {selectedConversation ? (
                   <ChatDetail 
                     conversationId={selectedConversation}
-                    onDelete={() => handleDeleteConversation(selectedConversation)}
+                    onDeleted={handleConversationDeleted}
                   />
                 ) : (
                   <CardContent className="flex items-center justify-center h-96">
@@ -334,10 +399,9 @@ export default function Chatbot() {
                   <div>
                     <h4 className="font-medium">Trạng thái huấn luyện</h4>
                     <p className="text-sm text-gray-600">
-                      {db.getChatbot().lastTrainedAt 
-                        ? `Lần cuối: ${new Date(db.getChatbot().lastTrainedAt!).toLocaleString("vi-VN")}`
-                        : 'Chưa huấn luyện'
-                      }
+                      {lastTrainedAt 
+                        ? `Lần cuối: ${new Date(lastTrainedAt).toLocaleString("vi-VN")}`
+                        : 'Chưa huấn luyện'}
                     </p>
                   </div>
                   <Button onClick={handleTrain} disabled={isTraining}>
@@ -366,25 +430,33 @@ export default function Chatbot() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
-                  <span>Thống kê tin nhắn theo ngày</span>
+                  <span>Thống kê chế độ chat</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-end justify-between gap-2">
-                  {Array.from({length: 7}).map((_, i) => {
-                    const height = Math.random() * 200 + 20;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center">
-                        <div 
-                          className="w-full bg-blue-500 rounded-t-md transition-all duration-300 hover:bg-blue-600"
-                          style={{ height: `${height}px` }}
-                        />
-                        <div className="text-xs mt-2 text-gray-500">
-                          {new Date(Date.now() - i * 86400000).toLocaleDateString('vi-VN', { weekday: 'short' })}
+                <div className="space-y-4">
+                  {stats?.modeBreakdown?.length ? (
+                    stats.modeBreakdown.map((item) => (
+                      <div key={item.mode} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{item.label}</span>
+                          <span className="text-gray-500">{item.count} cuộc trò chuyện</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{
+                              width: stats.totalConversations
+                                ? `${(item.count / stats.totalConversations) * 100}%`
+                                : '0%',
+                            }}
+                          />
                         </div>
                       </div>
-                    );
-                  })}
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Chưa có dữ liệu thống kê.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -425,15 +497,40 @@ export default function Chatbot() {
   );
 }
 
-// Chat Detail Component
-function ChatDetail({ conversationId, onDelete }: { conversationId: string; onDelete: () => void }) {
-  const chatMessage = db.listChatMessages().find(m => m.id === conversationId);
-  const customer = db.listCustomers().find(c => c.id === chatMessage?.userId);
-  const histories = db.getChatHistoriesByMessageId(conversationId)
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const category = db.listCategories().find(c => c.id === chatMessage?.categoryId);
+function ChatDetail({ conversationId, onDeleted }: { conversationId: number; onDeleted: () => void }) {
+  const { detail, loading, refetch } = useAdminChatConversationDetail(conversationId);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  if (!chatMessage) return null;
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await adminChatBoxApi.deleteConversation(conversationId);
+      toast.success("Đã xoá cuộc trò chuyện");
+      onDeleted();
+    } catch (error: any) {
+      toast.error(getErrorMessage(error, "Không thể xoá cuộc trò chuyện"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <CardContent className="flex items-center justify-center h-96">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+      </CardContent>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <CardContent className="flex items-center justify-center h-96">
+        <p className="text-gray-500 text-sm">Không tìm thấy dữ liệu cuộc trò chuyện</p>
+      </CardContent>
+    );
+  }
+
+  const { chatBox, history } = detail;
 
   return (
     <>
@@ -441,55 +538,62 @@ function ChatDetail({ conversationId, onDelete }: { conversationId: string; onDe
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src={customer?.avatar} />
+              <AvatarImage src={chatBox.user?.avatar || undefined} />
               <AvatarFallback>
                 <User className="h-5 w-5" />
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold">{customer?.name || 'Khách vãng lai'}</h3>
-              <p className="text-sm text-gray-500">{customer?.email}</p>
+              <h3 className="font-semibold">{chatBox.user?.name || 'Khách vãng lai'}</h3>
+              <p className="text-sm text-gray-500">{chatBox.user?.email}</p>
+              {chatBox.user?.phoneNumber && (
+                <p className="text-xs text-gray-400">{chatBox.user.phoneNumber}</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {category && (
-              <Badge variant="outline">{category.name}</Badge>
-            )}
-            <Button variant="ghost" size="sm" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
+            <Badge variant="outline">{chatBox.modeLabel}</Badge>
+            <Button variant="ghost" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="flex-1 overflow-y-auto max-h-96 p-4">
         <div className="space-y-4">
-          {histories.map(history => (
-            <div 
-              key={history.id} 
-              className={`flex ${
-                history.context === 'user_question' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              <div 
-                className={`max-w-[70%] p-3 rounded-lg ${
-                  history.context === 'user_question'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
-              >
-                <p className="text-sm">{history.message}</p>
-                <p className={`text-xs mt-1 ${
-                  history.context === 'user_question' ? 'text-blue-100' : 'text-gray-500'
-                }`}>
-                  {new Date(history.createdAt).toLocaleTimeString('vi-VN', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </p>
+          {history.map(entry => {
+            const isUser = entry.role === 'user';
+            const isAssistant = entry.role === 'assistant';
+            const bubbleClass = isUser
+              ? 'bg-blue-500 text-white'
+              : isAssistant
+                ? 'bg-gray-100 text-gray-900'
+                : 'bg-amber-100 text-amber-900';
+
+            const alignClass = isUser ? 'justify-end' : 'justify-start';
+
+            return (
+              <div key={entry.id} className={`flex ${alignClass}`}>
+                <div className={`max-w-[80%] p-3 rounded-lg ${bubbleClass}`}>
+                  <p className="text-sm whitespace-pre-line">{entry.message}</p>
+                  <p className={`text-xs mt-1 ${isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {new Date(entry.createdAt).toLocaleTimeString('vi-VN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </>

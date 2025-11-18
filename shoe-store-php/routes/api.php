@@ -1,14 +1,18 @@
 <?php
 
+use App\Http\Controllers\AdminChatBoxController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ColorController;
+use App\Http\Controllers\ChatBoxController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ShareController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ProfileController;
@@ -43,6 +47,7 @@ Route::group(['prefix' => 'products'], function () {
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/search', [ProductController::class, 'search']);
     Route::get('/{id}', [ProductController::class, 'show']);
+    Route::get('/{id}/share', [ShareController::class, 'getProductShareLinks']);
 });
 
 Route::group(['prefix' => 'cart', 'middleware' => ['user']], function () { 
@@ -87,6 +92,13 @@ Route::group(['prefix' => 'reviews', 'middleware' => ['user']], function () {
     Route::post('/', [ReviewController::class, 'store']);
     Route::put('/{id}', [ReviewController::class, 'update']);
     Route::delete('/{id}', [ReviewController::class, 'destroy']);
+});
+
+// Chat box assistant
+Route::group(['prefix' => 'chat-box', 'middleware' => ['user']], function () {
+    Route::get('/sessions', [ChatBoxController::class, 'listSessions']);
+    Route::get('/sessions/{chatBoxId}', [ChatBoxController::class, 'showSession']);
+    Route::post('/messages', [ChatBoxController::class, 'sendMessage']);
 });
 
 // Roles
@@ -136,5 +148,22 @@ Route::group(['prefix' => 'admin', 'middleware' => ['admin']], function () {
         Route::get('/{id}', [AdminOrderController::class, 'show']);
         Route::put('/{id}/status', [AdminOrderController::class, 'updateStatus']);
         Route::post('/{id}/cancel', [AdminOrderController::class, 'cancel']);
+    });
+
+    // Customers Management (chỉ quản lý users có role USER)
+    Route::group(['prefix' => 'customers'], function () {
+        Route::get('/', [CustomerController::class, 'index']);
+        Route::get('/{id}', [CustomerController::class, 'show']);
+        Route::post('/', [CustomerController::class, 'store']);
+        Route::put('/{id}', [CustomerController::class, 'update']);
+        Route::post('/{id}', [CustomerController::class, 'updateFormData']); // For form-data
+        Route::delete('/{id}', [CustomerController::class, 'destroy']);
+    });
+
+    // Chat box management
+    Route::group(['prefix' => 'chat-box'], function () {
+        Route::get('/messages', [AdminChatBoxController::class, 'index']);
+        Route::get('/messages/{id}', [AdminChatBoxController::class, 'show']);
+        Route::delete('/messages/{id}', [AdminChatBoxController::class, 'destroy']);
     });
 });
