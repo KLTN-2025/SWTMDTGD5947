@@ -15,6 +15,7 @@ class CartItem extends Model
     protected $fillable = [
         'cartId',
         'productVariantId',
+        'colorId',
         'quantity',
     ];
 
@@ -32,5 +33,11 @@ class CartItem extends Model
     public function productVariant()
     {
         return $this->belongsTo(ProductVariant::class, 'productVariantId');
+    }
+
+    // Many-to-one relationship with color
+    public function color()
+    {
+        return $this->belongsTo(Color::class, 'colorId');
     }
 }

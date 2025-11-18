@@ -84,7 +84,7 @@ class CheckoutService
             }
 
             $cartItems = CartItem::where('cartId', $cart->id)
-                ->with(['productVariant.product'])
+                ->with(['productVariant.product', 'productVariant.product.colors'])
                 ->get();
 
             if ($cartItems->isEmpty()) {
@@ -195,6 +195,7 @@ class CheckoutService
                     OrderItem::create([
                         'orderId' => $order->id,
                         'productVariantId' => $cartItem->productVariantId,
+                        'colorId' => $cartItem->colorId,
                         'quantity' => $cartItem->quantity,
                         'amount' => $cartItem->quantity * $cartItem->productVariant->price,
                     ]);
@@ -220,7 +221,9 @@ class CheckoutService
                 // Load order với relationships cho response
                 $order->load([
                     'items.productVariant.product.images',
+                    'items.productVariant.product.colors',
                     'items.productVariant.size',
+                    'items.color',
                     'user'
                 ]);
 
@@ -275,7 +278,7 @@ class CheckoutService
             }
 
             $cartItems = CartItem::where('cartId', $cart->id)
-                ->with(['productVariant.product', 'productVariant.size'])
+                ->with(['productVariant.product', 'productVariant.product.colors', 'productVariant.size'])
                 ->get();
 
             $subtotal = $cartItems->sum(function ($item) {

@@ -20,7 +20,7 @@ interface CartApiContextValue {
   error: Error | null;
   
   // Actions
-  addToCart: (productVariantId: number, quantity: number) => Promise<void>;
+  addToCart: (productVariantId: number, quantity: number, colorId?: number | null) => Promise<void>;
   updateCartItem: (cartItemId: number, quantity: number) => Promise<void>;
   deleteCartItem: (cartItemId: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -62,8 +62,8 @@ export function CartApiProvider({ children }: { children: React.ReactNode }) {
 
   // Add to cart mutation
   const addToCartMutation = useMutation({
-    mutationFn: async ({ productVariantId, quantity }: { productVariantId: number; quantity: number }) => {
-      const response = await cartApi.addToCart({ productVariantId, quantity });
+    mutationFn: async ({ productVariantId, quantity, colorId }: { productVariantId: number; quantity: number; colorId?: number | null }) => {
+      const response = await cartApi.addToCart({ productVariantId, quantity, colorId });
       return response.data;
     },
     onSuccess: (data) => {
@@ -131,12 +131,12 @@ export function CartApiProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Action functions
-  const addToCart = async (productVariantId: number, quantity: number) => {
+  const addToCart = async (productVariantId: number, quantity: number, colorId?: number | null) => {
     if (!user) {
       toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
       return;
     }
-    await addToCartMutation.mutateAsync({ productVariantId, quantity });
+    await addToCartMutation.mutateAsync({ productVariantId, quantity, colorId });
   };
 
   const updateCartItem = async (cartItemId: number, quantity: number) => {

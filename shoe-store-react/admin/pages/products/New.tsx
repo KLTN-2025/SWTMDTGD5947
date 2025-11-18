@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useAdminProducts } from "../../lib/use-admin-products";
 import { useAdminCategories } from "../../lib/use-admin-categories";
+import { useColors } from "../../lib/use-colors";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +17,7 @@ export default function ProductNew() {
   const nav = useNavigate();
   const { createProduct } = useAdminProducts();
   const { categories } = useAdminCategories();
+  const { colors, loading: colorsLoading } = useColors();
   
   const [skuId, setSkuId] = useState("");
   const [name, setName] = useState("");
@@ -24,6 +26,7 @@ export default function ProductNew() {
   const [quantity, setQuantity] = useState<number>(0);
   const [status, setStatus] = useState<'IN_STOCK' | 'SOLD_OUT' | 'PRE_SALE'>('IN_STOCK');
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
+  const [colorIds, setColorIds] = useState<number[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -54,6 +57,7 @@ export default function ProductNew() {
         quantity,
         status,
         category_ids: categoryIds,
+        color_ids: colorIds,
         images,
       });
       // Hook already shows toast, just navigate
@@ -171,6 +175,49 @@ export default function ProductNew() {
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
                     {category.name}
+                  </label>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Màu sắc sản phẩm</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {colorsLoading ? (
+              <p className="text-sm text-gray-500">Đang tải màu sắc...</p>
+            ) : colors.length === 0 ? (
+              <p className="text-sm text-gray-500">Chưa có màu sắc nào</p>
+            ) : (
+              colors.map((color) => (
+                <div key={color.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`color-${color.id}`}
+                    checked={colorIds.includes(color.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setColorIds([...colorIds, color.id]);
+                      } else {
+                        setColorIds(colorIds.filter(id => id !== color.id));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`color-${color.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                  >
+                    {color.hexCode && (
+                      <span 
+                        className="w-4 h-4 rounded-full border border-gray-300"
+                        style={{ backgroundColor: color.hexCode }}
+                      />
+                    )}
+                    {color.name}
                   </label>
                 </div>
               ))

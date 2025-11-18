@@ -139,6 +139,7 @@ export interface OrderItem {
   amount: number;
   itemTotal: number;
   mainImage: string;
+  colorId?: number | null;
   productVariant: {
     id: number;
     price: number;
@@ -147,12 +148,27 @@ export interface OrderItem {
       name: string;
       skuId: string;
       description?: string;
+      colors?: Array<{
+        id: number;
+        name: string;
+        hexCode?: string | null;
+        description?: string | null;
+      }>;
     };
     size: {
       id: number;
       nameSize: string;
     };
   };
+  color?: {
+    id: number;
+    name: string;
+    hexCode?: string | null;
+    description?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt?: string | null;
+  } | null;
 }
 
 export interface OrderStatusTimeline {

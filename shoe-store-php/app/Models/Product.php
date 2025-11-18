@@ -48,6 +48,13 @@ class Product extends Model
             ->withTimestamps();
     }
 
+    // Many-to-many relationship with colors
+    public function colors()
+    {
+        return $this->belongsToMany(Color::class, 'product_color', 'productId', 'colorId')
+            ->withTimestamps();
+    }
+
     // One-to-many relationship with reviews
     public function reviews()
     {

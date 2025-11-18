@@ -6,6 +6,7 @@ use App\Helper\MsgCode;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\ProductVariant;
+use App\Models\Color;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +29,7 @@ class CartService {
       return $validationResult['response'];
     }
 
-    $addResult = $this->performAddToCart($user, $request, $validationResult['productVariant']);
+    $addResult = $this->performAddToCart($user, $request, $validationResult['productVariant'], $validationResult['colorId'] ?? null);
     if (!$addResult['isAdded']) {
       return $addResult['response'];
     }
@@ -90,7 +91,7 @@ class CartService {
       ];
     }
 
-    $productVariant = ProductVariant::with(['product', 'size'])->find($request->productVariantId);
+    $productVariant = ProductVariant::with(['product.colors', 'size'])->find($request->productVariantId);
     if (!$productVariant) {
       return [
         'isValid' => false,
@@ -144,21 +145,55 @@ class CartService {
       ];
     }
 
+    // Validate colorId nếu có
+    $colorId = null;
+    if ($request->has('colorId') && !empty($request->colorId)) {
+      // Kiểm tra colorId có thuộc về product không
+      $colorExists = $product->colors()->where('colors.id', $request->colorId)->exists();
+      if (!$colorExists) {
+        return [
+          'isValid' => false,
+          'response' => [
+            'code' => HttpCode::BAD_REQUEST,
+            'status' => false,
+            'msgCode' => MsgCode::VALIDATION_ERROR,
+            'message' => 'Màu sắc không hợp lệ cho sản phẩm này'
+          ]
+        ];
+      }
+      $colorId = $request->colorId;
+    } else {
+      // Nếu sản phẩm có màu nhưng không chọn màu
+      if ($product->colors && $product->colors->count() > 0) {
+        return [
+          'isValid' => false,
+          'response' => [
+            'code' => HttpCode::BAD_REQUEST,
+            'status' => false,
+            'msgCode' => MsgCode::VALIDATION_ERROR,
+            'message' => 'Vui lòng chọn màu sắc cho sản phẩm'
+          ]
+        ];
+      }
+    }
+
     return [
       'isValid' => true,
-      'productVariant' => $productVariant
+      'productVariant' => $productVariant,
+      'colorId' => $colorId
     ];
   }
 
-  private function performAddToCart($user, $request, $productVariant) {
+  private function performAddToCart($user, $request, $productVariant, $colorId = null) {
     try {
-      return DB::transaction(function () use ($user, $request, $productVariant) {
+      return DB::transaction(function () use ($user, $request, $productVariant, $colorId) {
         // Tìm hoặc tạo cart cho user
         $cart = Cart::firstOrCreate(['userId' => $user->id]);
 
-        // Kiểm tra xem sản phẩm đã có trong cart chưa
+        // Kiểm tra xem sản phẩm đã có trong cart chưa (cùng variant và cùng màu)
         $existingCartItem = CartItem::where('cartId', $cart->id)
           ->where('productVariantId', $request->productVariantId)
+          ->where('colorId', $colorId)
           ->first();
 
         if ($existingCartItem) {
@@ -187,6 +222,7 @@ class CartService {
           $cartItem = CartItem::create([
             'cartId' => $cart->id,
             'productVariantId' => $request->productVariantId,
+            'colorId' => $colorId,
             'quantity' => $request->quantity
           ]);
         }
@@ -195,7 +231,9 @@ class CartService {
         $cartItem->load([
           'productVariant.product.images',
           'productVariant.product.categories',
-          'productVariant.size'
+          'productVariant.product.colors',
+          'productVariant.size',
+          'color'
         ]);
         
         // Đếm tổng số items trong cart
@@ -255,8 +293,10 @@ class CartService {
       $cartItems = CartItem::where('cartId', $cart->id)
         ->with([
           'productVariant.product.images',
-          'productVariant.product.categories', 
-          'productVariant.size'
+          'productVariant.product.categories',
+          'productVariant.product.colors',
+          'productVariant.size',
+          'color'
         ])
         ->get();
 
@@ -414,6 +454,7 @@ class CartService {
         ->with([
           'productVariant.product.images',
           'productVariant.product.categories',
+          'productVariant.product.colors',
           'productVariant.size'
         ])
         ->first();

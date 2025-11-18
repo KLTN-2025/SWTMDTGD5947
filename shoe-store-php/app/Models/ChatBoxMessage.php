@@ -15,6 +15,11 @@ class ChatBoxMessage extends Model
     protected $fillable = [
         'userId',
         'categoryId',
+        'mode',
+    ];
+
+    protected $casts = [
+        'mode' => 'string',
     ];
 
     const CREATED_AT = 'createdAt';
@@ -25,6 +30,11 @@ class ChatBoxMessage extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'userId');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'categoryId');
     }
 
     // One-to-many relationship with chat histories

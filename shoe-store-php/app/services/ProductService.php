@@ -25,7 +25,7 @@ class ProductService
     {
         try {
             $perPage = $request->input('per_page', 15);
-            $products = Product::with(['images', 'categories', 'variants.size'])
+            $products = Product::with(['images', 'categories', 'colors', 'variants.size'])
                 ->orderBy('createdAt', 'desc')
                 ->paginate($perPage);
 
@@ -210,7 +210,7 @@ class ProductService
             // Debug log
             Log::info('Search params received:', $data);
             
-            $query = Product::query()->with(['images', 'categories', 'variants.size']);
+            $query = Product::query()->with(['images', 'categories', 'colors', 'variants.size']);
 
             // Tìm kiếm theo từ khóa
             if (!empty($data['keyword'])) {
@@ -315,7 +315,7 @@ class ProductService
     private function findProduct($id)
     {
         try {
-            $product = Product::with(['images', 'categories', 'variants.size', 'reviews.user'])->find($id);
+            $product = Product::with(['images', 'categories', 'colors', 'variants.size', 'reviews.user'])->find($id);
 
             if (!$product) {
                 return [
@@ -358,6 +358,8 @@ class ProductService
             'quantity' => 'required|integer|min:0',
             'category_ids' => 'nullable|array',
             'category_ids.*' => 'integer|exists:categories,id',
+            'color_ids' => 'nullable|array',
+            'color_ids.*' => 'integer|exists:colors,id',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ];
@@ -386,6 +388,9 @@ class ProductService
             'category_ids.array' => 'Danh mục phải là một mảng.',
             'category_ids.*.integer' => 'ID danh mục phải là số nguyên.',
             'category_ids.*.exists' => 'Danh mục không tồn tại.',
+            'color_ids.array' => 'Màu sắc phải là một mảng.',
+            'color_ids.*.integer' => 'ID màu sắc phải là số nguyên.',
+            'color_ids.*.exists' => 'Màu sắc không tồn tại.',
             'images.array' => 'Ảnh phải là một mảng.',
             'images.*.image' => 'File phải là ảnh.',
             'images.*.mimes' => 'Ảnh phải có định dạng: jpeg, png, jpg, gif, webp.',
@@ -448,12 +453,17 @@ class ProductService
                     $product->categories()->attach($data['category_ids']);
                 }
 
+                // Xử lý màu sắc
+                if (!empty($data['color_ids'])) {
+                    $product->colors()->attach($data['color_ids']);
+                }
+
                 // Xử lý upload ảnh
                 if ($request->hasFile('images')) {
                     $this->handleImageUpload($product, $request->file('images'));
                 }
 
-                return $product->load(['images', 'categories', 'variants.size']);
+                return $product->load(['images', 'categories', 'colors', 'variants.size']);
             });
 
             return [
@@ -499,13 +509,18 @@ class ProductService
                     $product->categories()->sync($data['category_ids']);
                 }
 
+                // Cập nhật màu sắc
+                if (isset($data['color_ids'])) {
+                    $product->colors()->sync($data['color_ids']);
+                }
+
                 // Xử lý upload ảnh mới
                 if ($request->hasFile('images')) {
                     $this->handleImageUpload($product, $request->file('images'));
                 }
             });
 
-            $product->refresh()->load(['images', 'categories', 'variants.size']);
+            $product->refresh()->load(['images', 'categories', 'colors', 'variants.size']);
 
             return [
                 'isUpdated' => true,

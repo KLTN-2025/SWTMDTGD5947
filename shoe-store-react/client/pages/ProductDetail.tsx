@@ -3,14 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, type Product } from "@/lib/product-api";
+import { reviewApi } from "@/lib/review-api";
 import { useEffect, useMemo, useState } from "react";
 import { useCartApi } from "@/state/cart-api";
 import { useAuth } from "@/state/auth";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Star, Package, Tag, ShoppingCart, ArrowLeft, User } from "lucide-react";
+import { Star, Package, Tag, ShoppingCart, ArrowLeft, User, Share2 } from "lucide-react";
+import { Reviews } from "@/components/product/Reviews";
+import { ShareDialog } from "@/components/product/ShareDialog";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -23,11 +26,46 @@ export default function ProductDetail() {
   const product = response?.data;
   const [activeImg, setActiveImg] = useState(0);
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
   const { addToCart, isLoading: cartLoading } = useCartApi();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  
+  // Create review mutation
+  const createReviewMutation = useMutation({
+    mutationFn: async (data: { productId: number; rating: number; comment?: string }) => {
+      const response = await reviewApi.createReview(data);
+      return response.data;
+    },
+    onSuccess: () => {
+      // Refresh product data to get updated reviews
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      toast.success("Cảm ơn bạn đã đánh giá! Đánh giá của bạn đã được gửi thành công.");
+      setComment("");
+      setRating(5);
+    },
+    onError: (error: any) => {
+      // Lấy message từ API response
+      let message = 'Gửi đánh giá thất bại';
+      if (error?.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error?.message) {
+        message = error.message;
+      }
+      toast.error(message);
+    }
+  });
+
+  // Auto-select first color if available
+  useEffect(() => {
+    if (product && product.colors && product.colors.length > 0 && !selectedColorId) {
+      setSelectedColorId(product.colors[0].id);
+    }
+  }, [product, selectedColorId]);
 
   // Auto-select first variant
   useEffect(() => {
@@ -167,6 +205,7 @@ export default function ProductDetail() {
                   </div>
                 )}
 
+
                 {/* Product Details - Moved up for better visibility */}
                 <div className="mt-6 p-4 bg-muted/30 rounded-lg border">
                   <h4 className="text-base font-semibold mb-3 flex items-center gap-2">
@@ -190,6 +229,36 @@ export default function ProductDetail() {
                     <div className="font-medium">{product.quantity}</div>
                   </div>
                 </div>
+
+                {/* Color Selection */}
+                {product.colors && product.colors.length > 0 && (
+                  <div className="mt-6">
+                    <div className="font-semibold mb-3">Chọn màu sắc</div>
+                    <div className="flex flex-wrap gap-2">
+                      {product.colors.map((color) => (
+                        <button 
+                          key={color.id} 
+                          onClick={() => setSelectedColorId(color.id)} 
+                          className={`px-4 py-3 rounded-lg border transition-all flex items-center gap-2 ${
+                            selectedColorId === color.id
+                              ? "bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary ring-offset-2"
+                              : "bg-secondary text-secondary-foreground hover:border-primary hover:shadow-sm"
+                          }`}
+                        >
+                          <div className="font-medium">{color.name}</div>
+                          {color.hexCode && (
+                            <span className="text-xs text-muted-foreground">({color.hexCode})</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedColorId && product.colors.find(c => c.id === selectedColorId)?.description && (
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        {product.colors.find(c => c.id === selectedColorId)?.description}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Size Selection */}
                 {product.variants && product.variants.length > 0 && (
@@ -243,23 +312,28 @@ export default function ProductDetail() {
                     className="flex-1" 
                     size="lg"
                     onClick={async () => {
-                      if (selectedVariant) {
-                        await addToCart(selectedVariant.id, qty);
+                      if (!selectedVariant) {
+                        toast.error("Vui lòng chọn size");
+                        return;
                       }
+                      if (product.colors && product.colors.length > 0 && !selectedColorId) {
+                        toast.error("Vui lòng chọn màu sắc");
+                        return;
+                      }
+                      await addToCart(selectedVariant.id, qty, selectedColorId);
                     }} 
                     disabled={!selectedVariant || product.status === 'SOLD_OUT' || cartLoading}
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Thêm vào giỏ
                   </Button>
-                  <Button variant="secondary" size="lg" asChild>
-                    <a 
-                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`} 
-                      target="_blank" 
-                      rel="noreferrer"
-                    >
-                      Chia sẻ
-                    </a>
+                  <Button 
+                    variant="secondary" 
+                    size="lg"
+                    onClick={() => setShareDialogOpen(true)}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Chia sẻ
                   </Button>
                 </div>
 
@@ -364,18 +438,22 @@ export default function ProductDetail() {
                       <Button 
                         className="px-8"
                         onClick={() => {
+                          if (!product) return;
+                          
                           if (comment.trim().length < 10) {
                             toast.error("Vui lòng nhập ít nhất 10 ký tự để đánh giá");
                             return;
                           }
-                          // TODO: Implement API call to submit review
-                          toast.success("Cảm ơn bạn đã đánh giá! Đánh giá sẽ được hiển thị sau khi được duyệt.");
-                          setComment("");
-                          setRating(5);
+                          
+                          createReviewMutation.mutate({
+                            productId: product.id,
+                            rating: rating,
+                            comment: comment.trim()
+                          });
                         }}
-                        disabled={!comment.trim()}
+                        disabled={!comment.trim() || createReviewMutation.isPending}
                       >
-                        Gửi đánh giá
+                        {createReviewMutation.isPending ? "Đang gửi..." : "Gửi đánh giá"}
                       </Button>
                       <Button 
                         variant="outline"
@@ -392,72 +470,19 @@ export default function ProductDetail() {
               )}
 
               {/* Reviews List */}
-              {product.reviews && product.reviews.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Tất cả đánh giá</h3>
-                  {product.reviews.map((review) => (
-                    <div key={review.id} className="p-4 border rounded-lg bg-card hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-3">
-                        {/* User Avatar */}
-                        <div className="flex-shrink-0">
-                          {review.user?.fullImageUrl ? (
-                            <img 
-                              src={review.user.fullImageUrl} 
-                              alt={review.user.name}
-                              className="w-10 h-10 rounded-full object-cover border-2 border-muted"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                              <User className="w-5 h-5 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Review Content */}
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="font-medium">{review.user?.name || 'Người dùng'}</div>
-                              <div className="text-xs text-muted-foreground">@{review.user?.userName || 'anonymous'}</div>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                            </span>
-                          </div>
-                          
-                          {/* Rating Stars */}
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex items-center">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i < review.rating
-                                      ? "fill-yellow-400 text-yellow-400"
-                                      : "fill-gray-200 text-gray-200"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-sm font-medium">{review.rating}/5</span>
-                          </div>
-                          
-                          {/* Comment */}
-                          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{review.comment}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 border rounded-lg bg-muted/20">
-                  <Star className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-20" />
-                  <p className="text-muted-foreground">Chưa có đánh giá nào cho sản phẩm này</p>
-                  <p className="text-sm text-muted-foreground mt-1">Hãy là người đầu tiên đánh giá!</p>
-                </div>
-              )}
+              <Reviews reviews={product.reviews || []} productId={product.id} />
             </div>
           </>
+        )}
+
+        {/* Share Dialog */}
+        {product && (
+          <ShareDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            productId={product.id}
+            productName={product.name}
+          />
         )}
         
         <div className="mt-10">

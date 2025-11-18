@@ -133,7 +133,7 @@ class PaymentService
         try {
             $order = Order::where('id', $orderId)
                 ->where('userId', $user->id)
-                ->with(['items', 'payment'])
+                ->with(['items.productVariant.product.colors', 'payment'])
                 ->first();
 
             if (!$order) {
@@ -312,7 +312,7 @@ class PaymentService
                 $payment->save();
 
                 // Load order với relationships
-                $order->load(['items.productVariant.product', 'payment']);
+                $order->load(['items.productVariant.product.colors', 'payment']);
 
                 return [
                     'isProcessed' => true,
@@ -385,7 +385,7 @@ class PaymentService
                 $order->save();
 
                 // Load order với relationships
-                $order->load(['items.productVariant.product', 'payment']);
+                $order->load(['items.productVariant.product.colors', 'payment']);
 
                 return [
                     'isConfirmed' => true,

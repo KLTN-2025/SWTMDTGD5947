@@ -212,6 +212,22 @@ export default function Cart() {
                                 {cat.name}
                               </Badge>
                             ))}
+                            {/* Color - hiển thị màu đã chọn */}
+                            {item.color && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs text-muted-foreground">Màu:</span>
+                                <Badge 
+                                  variant="outline"
+                                  className="text-xs"
+                                  title={item.color.name}
+                                >
+                                  {item.color.name}
+                                  {item.color.hexCode && (
+                                    <span className="ml-1 text-muted-foreground">({item.color.hexCode})</span>
+                                  )}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </div>
                         

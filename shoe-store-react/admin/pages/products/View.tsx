@@ -147,6 +147,32 @@ export default function ProductView() {
                     </TableCell>
                   </TableRow>
                   <TableRow>
+                    <TableCell className="font-medium">Màu sắc</TableCell>
+                    <TableCell>
+                      {product.colors && product.colors.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {product.colors.map((color) => (
+                            <Badge 
+                              key={color.id} 
+                              variant="outline"
+                              className="flex items-center gap-1"
+                            >
+                              {color.hexCode && (
+                                <span 
+                                  className="w-3 h-3 rounded-full border border-gray-300"
+                                  style={{ backgroundColor: color.hexCode }}
+                                />
+                              )}
+                              {color.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
                     <TableCell className="font-medium">Ngày tạo</TableCell>
                     <TableCell>
                       {new Date(product.createdAt).toLocaleString("vi-VN")}
@@ -202,6 +228,10 @@ export default function ProductView() {
               <div>
                 <p className="text-sm text-gray-500">Số danh mục</p>
                 <p className="text-xl font-bold">{product.categories?.length || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Số màu sắc</p>
+                <p className="text-xl font-bold">{product.colors?.length || 0}</p>
               </div>
             </CardContent>
           </Card>
