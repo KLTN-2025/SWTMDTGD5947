@@ -31,6 +31,7 @@ import AdminCategories from "../admin/pages/Categories";
 import AdminOrders from "../admin/pages/Orders";
 import AdminCustomers from "../admin/pages/Customers";
 import AdminChatbot from "../admin/pages/Chatbot";
+import AdminChatbotTrainer from "../admin/pages/ChatbotTrainer";
 import AdminReports from "../admin/pages/Reports";
 import ProductNew from "../admin/pages/products/New";
 import ProductEdit from "../admin/pages/products/Edit";
@@ -47,6 +48,7 @@ import UserNew from "../admin/pages/users/new";
 import UserEdit from "../admin/pages/users/[id]";
 import UserView from "../admin/pages/users/[id]/view";
 import { useAuth } from "./state/auth";
+import { UserChatWidget } from "./components/chat/UserChatWidget";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
@@ -158,11 +160,13 @@ const App = () => (
               <Route path="/admin/users/:id" element={<AdminProtectedRoute><AdminLayout><UserEdit /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/users/:id/view" element={<AdminProtectedRoute><AdminLayout><UserView /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/chatbot" element={<AdminProtectedRoute><AdminLayout><AdminChatbot /></AdminLayout></AdminProtectedRoute>} />
+              <Route path="/admin/chatbot/train" element={<AdminProtectedRoute><AdminLayout><AdminChatbotTrainer /></AdminLayout></AdminProtectedRoute>} />
               <Route path="/admin/reports" element={<AdminProtectedRoute><AdminLayout><AdminReports /></AdminLayout></AdminProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <UserChatWidget />
           </BrowserRouter>
           </TooltipProvider>
         </CartApiProvider>

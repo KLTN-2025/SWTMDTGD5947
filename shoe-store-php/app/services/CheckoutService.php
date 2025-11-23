@@ -4,13 +4,18 @@ namespace App\services;
 
 use App\Helper\HttpCode;
 use App\Helper\MsgCode;
+use App\Helper\Constants;
+use App\Mail\AdminOrderPlacedMail;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Exception;
@@ -32,6 +37,10 @@ class CheckoutService
         $orderResult = $this->createOrderFromCart($user, $cartResult['cart'], $validationResult['data']);
         if (!$orderResult['isCreated']) {
             return $orderResult['response'];
+        }
+
+        if (!empty($orderResult['order'])) {
+            $this->notifyAdminsAboutOrder($orderResult['order']);
         }
 
         return $orderResult['response'];
@@ -229,6 +238,7 @@ class CheckoutService
 
                 return [
                     'isCreated' => true,
+                    'order' => $order,
                     'response' => [
                         'code' => HttpCode::SUCCESS,
                         'status' => true,
@@ -246,6 +256,7 @@ class CheckoutService
             Log::error('Create order failed: ' . $e->getMessage());
             return [
                 'isCreated' => false,
+                'order' => null,
                 'response' => [
                     'code' => HttpCode::SERVER_ERROR,
                     'status' => false,
@@ -333,5 +344,34 @@ class CheckoutService
     {
         // Logic tính thuế (VN thường không có VAT cho retail)
         return 0;
+    }
+
+    private function notifyAdminsAboutOrder(?Order $order): void
+    {
+        if (!$order) {
+            return;
+        }
+
+        try {
+            $adminRole = Role::where('name', Constants::ADMIN)->first();
+            if (!$adminRole) {
+                return;
+            }
+
+            $admins = User::where('roleId', $adminRole->id)
+                ->where('isActive', true)
+                ->whereNotNull('email')
+                ->get();
+
+            if ($admins->isEmpty()) {
+                return;
+            }
+
+            foreach ($admins as $admin) {
+                Mail::to($admin->email)->queue(new AdminOrderPlacedMail($order));
+            }
+        } catch (Exception $exception) {
+            Log::error('Notify admins about new order failed: ' . $exception->getMessage());
+        }
     }
 }

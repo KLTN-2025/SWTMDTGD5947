@@ -3,10 +3,12 @@
 namespace App\services;
 
 use App\Enums\ChatBoxMode;
+use App\Helper\Constants;
 use App\Helper\HttpCode;
 use App\Helper\MsgCode;
 use App\Models\ChatBoxMessage;
 use App\Models\HistoriesChatBox;
+use App\Models\Role;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,13 +24,35 @@ class AdminChatBoxService
             $perPage = (int) $request->input('per_page', 15);
             $perPage = max(5, min($perPage, 50));
 
+            $userRoleId = Role::where('name', Constants::USER)->value('id');
+            if (!$userRoleId) {
+                return [
+                    'code' => HttpCode::SERVER_ERROR,
+                    'status' => false,
+                    'msgCode' => MsgCode::SERVER_ERROR,
+                    'message' => 'Không tìm thấy role USER',
+                ];
+            }
+
+            $latestConversationIds = ChatBoxMessage::whereHas('user', function ($query) use ($userRoleId) {
+                $query->where('roleId', $userRoleId);
+            })
+                ->selectRaw('MAX(id) as latest_id')
+                ->groupBy('userId')
+                ->pluck('latest_id')
+                ->toArray();
+
             $query = ChatBoxMessage::with([
-                'user:id,name,email,userName,imageUrl,fullImageUrl,isActive',
+                'user:id,name,email,userName,imageUrl,isActive',
                 'histories' => function ($historyQuery) {
                     $historyQuery->orderBy('createdAt', 'desc')->limit(1);
                 },
                 'category:id,name',
             ])->withCount('histories');
+
+            $query->whereHas('user', function ($userQuery) use ($userRoleId) {
+                $userQuery->where('roleId', $userRoleId);
+            });
 
             if ($mode) {
                 $query->where('mode', $mode);
@@ -44,6 +68,12 @@ class AdminChatBoxService
                         $historyQuery->where('message', 'like', "%{$search}%");
                     });
                 });
+            }
+
+            if (!empty($latestConversationIds)) {
+                $query->whereIn('id', $latestConversationIds);
+            } else {
+                $query->whereRaw('1 = 0');
             }
 
             $paginator = $query->orderBy('updatedAt', 'desc')->paginate($perPage);
@@ -76,7 +106,10 @@ class AdminChatBoxService
                 ];
             })->values();
 
-            $modeBreakdownRaw = ChatBoxMessage::select('mode', DB::raw('COUNT(*) as total'))
+            $modeBreakdownRaw = ChatBoxMessage::whereHas('user', function ($query) use ($userRoleId) {
+                $query->where('roleId', $userRoleId);
+            })
+                ->select('mode', DB::raw('COUNT(DISTINCT userId) as total'))
                 ->groupBy('mode')
                 ->pluck('total', 'mode');
 
@@ -89,10 +122,22 @@ class AdminChatBoxService
                 ];
             }
 
+            $totalUniqueUsers = ChatBoxMessage::whereHas('user', function ($query) use ($userRoleId) {
+                $query->where('roleId', $userRoleId);
+            })
+                ->distinct('userId')->count('userId');
+            $activeUniqueUsers = ChatBoxMessage::whereHas('user', function ($query) use ($userRoleId) {
+                $query->where('roleId', $userRoleId);
+            })
+                ->where('updatedAt', '>=', now()->subDay())
+                ->distinct('userId')->count('userId');
+
             $stats = [
-                'totalConversations' => ChatBoxMessage::count(),
-                'activeConversations' => ChatBoxMessage::where('updatedAt', '>=', now()->subDay())->count(),
-                'totalMessages' => HistoriesChatBox::count(),
+                'totalConversations' => $totalUniqueUsers,
+                'activeConversations' => $activeUniqueUsers,
+                'totalMessages' => HistoriesChatBox::whereHas('chatBox.user', function ($query) use ($userRoleId) {
+                    $query->where('roleId', $userRoleId);
+                })->count(),
                 'modeBreakdown' => $modeBreakdown,
                 'availableModes' => ChatBoxMode::labels(),
             ];
@@ -129,14 +174,26 @@ class AdminChatBoxService
     public function getConversationDetail(int $chatBoxId): array
     {
         try {
+            $userRoleId = Role::where('name', Constants::USER)->value('id');
+            if (!$userRoleId) {
+                return [
+                    'code' => HttpCode::SERVER_ERROR,
+                    'status' => false,
+                    'msgCode' => MsgCode::SERVER_ERROR,
+                    'message' => 'Không tìm thấy role USER',
+                ];
+            }
+
             $chatBox = ChatBoxMessage::with([
-                'user:id,name,email,userName,imageUrl,fullImageUrl,isActive',
+                'user:id,name,email,userName,imageUrl,isActive,roleId',
                 'user.profile:id,userId,phoneNumber,address',
-                'histories' => function ($historyQuery) {
-                    $historyQuery->orderBy('createdAt', 'asc');
-                },
                 'category:id,name',
-            ])->find($chatBoxId);
+            ])
+                ->whereHas('user', function ($query) use ($userRoleId) {
+                    $query->where('roleId', $userRoleId);
+                })
+                ->where('id', $chatBoxId)
+                ->first();
 
             if (!$chatBox) {
                 return [
@@ -147,13 +204,30 @@ class AdminChatBoxService
                 ];
             }
 
-            $history = $chatBox->histories->map(function ($history) {
+            $chatBoxIds = ChatBoxMessage::where('userId', $chatBox->userId)
+                ->orderBy('createdAt', 'asc')
+                ->pluck('id')
+                ->toArray();
+
+            $histories = HistoriesChatBox::whereIn('chatBoxId', $chatBoxIds)
+                ->orderBy('createdAt', 'asc')
+                ->get();
+
+            $chatBoxLookup = ChatBoxMessage::whereIn('id', $chatBoxIds)
+                ->get(['id', 'mode', 'categoryId'])
+                ->keyBy('id');
+
+            $history = $histories->map(function ($history) use ($chatBoxLookup) {
+                $chatBoxMeta = $chatBoxLookup->get($history->chatBoxId);
                 return [
                     'id' => $history->id,
                     'role' => $this->extractRole($history->context),
                     'message' => $history->message,
                     'meta' => json_decode($history->context, true),
                     'createdAt' => optional($history->createdAt)->toDateTimeString(),
+                    'chatBoxId' => $history->chatBoxId,
+                    'mode' => $chatBoxMeta?->mode,
+                    'modeLabel' => $chatBoxMeta ? ChatBoxMode::getLabel($chatBoxMeta->mode) : null,
                 ];
             });
 

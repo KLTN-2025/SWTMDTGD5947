@@ -11,6 +11,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ShareController;
 use App\Http\Controllers\UserController;
@@ -165,5 +166,21 @@ Route::group(['prefix' => 'admin', 'middleware' => ['admin']], function () {
         Route::get('/messages', [AdminChatBoxController::class, 'index']);
         Route::get('/messages/{id}', [AdminChatBoxController::class, 'show']);
         Route::delete('/messages/{id}', [AdminChatBoxController::class, 'destroy']);
+        Route::post('/send', [ChatBoxController::class, 'sendMessage']);
+        Route::get('/sessions', [ChatBoxController::class, 'listSessions']);
+        Route::get('/sessions/{chatBoxId}', [ChatBoxController::class, 'showSession']);
+    });
+
+    // Reports & Statistics
+    Route::group(['prefix' => 'reports'], function () {
+        Route::get('/overview', [ReportController::class, 'getOverview']);
+        Route::get('/revenue', [ReportController::class, 'getRevenueByPeriod']);
+        Route::get('/top-products', [ReportController::class, 'getTopSellingProducts']);
+        Route::get('/rated-products', [ReportController::class, 'getRatedProducts']);
+        Route::get('/top-customers', [ReportController::class, 'getTopCustomers']);
+        Route::get('/revenue-by-category', [ReportController::class, 'getRevenueByCategory']);
+        Route::get('/inventory', [ReportController::class, 'getInventoryStatus']);
+        Route::get('/orders', [ReportController::class, 'getOrderStats']);
+        Route::get('/payments', [ReportController::class, 'getPaymentStats']);
     });
 });
