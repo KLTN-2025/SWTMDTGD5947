@@ -19,7 +19,8 @@ import {
   LogOut,
   Bell,
   Search,
-  UserCog
+  UserCog,
+  Sparkles
 } from "lucide-react";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
@@ -147,6 +148,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     { name: 'Khách hàng', href: '/admin/customers', icon: Users, current: false, badge: '2.1k' },
     { name: 'Người dùng', href: '/admin/users', icon: UserCog, current: false, badge: null },
     { name: 'Chatbot', href: '/admin/chatbot', icon: Bot, current: false, badge: null },
+    { name: 'Huấn luyện AI', href: '/admin/chatbot/train', icon: Sparkles, current: false, badge: null },
     { name: 'Thống kê', href: '/admin/reports', icon: BarChart3, current: false, badge: null },
   ];
 

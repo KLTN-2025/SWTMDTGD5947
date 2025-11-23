@@ -665,3 +665,214 @@ class AdminApi {
 }
 
 export const adminApi = new AdminApi();
+
+// ============================================================================
+// REPORTS API
+// ============================================================================
+
+export interface OverviewStats {
+  revenue: {
+    total: number;
+    averageDaily: number;
+    averageOrderValue: number;
+    previousPeriod?: number;
+    growth?: number;
+  };
+  orders: {
+    total: number;
+    completed: number;
+    pending: number;
+    cancelled: number;
+    previousPeriod?: number;
+    growth?: number;
+  };
+  customers: {
+    total: number;
+    new: number;
+    withOrders: number;
+    conversionRate: number;
+    previousPeriod?: number;
+    growth?: number;
+  };
+  products: {
+    total: number;
+    active: number;
+    soldOut: number;
+  };
+  period: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface RevenueByDay {
+  date: string;
+  revenue: number;
+  orderCount: number;
+}
+
+export interface RevenueByPeriodResponse {
+  revenueByDay: RevenueByDay[];
+  summary: {
+    total: number;
+    average: number;
+    max: number;
+    min: number;
+  };
+  period: number;
+}
+
+export interface TopSellingProduct {
+  productVariantId: number;
+  productId: number;
+  productName: string;
+  skuId: string;
+  basePrice: number;
+  size: {
+    id: number;
+    name: string;
+  } | null;
+  mainImage: string | null;
+  totalSold: number;
+  totalRevenue: number;
+}
+
+export interface TopSellingProductsResponse {
+  products: TopSellingProduct[];
+  period: number;
+}
+
+export interface InventoryProduct {
+  productId: number;
+  name: string;
+  skuId: string;
+  basePrice: number;
+  mainImage: string | null;
+  totalQuantity: number;
+  status: 'in_stock' | 'low_stock' | 'out_of_stock';
+  statusDisplay: string;
+}
+
+export interface InventoryStatusResponse {
+  summary: {
+    total: number;
+    inStock: number;
+    lowStock: number;
+    outOfStock: number;
+  };
+  lowStockProducts: InventoryProduct[];
+  allProducts: InventoryProduct[];
+}
+
+export interface OrderStatsResponse {
+  stats: {
+    [key: string]: {
+      count: number;
+      totalAmount: number;
+    };
+  };
+  period: number;
+}
+
+export interface PaymentMethodStat {
+  method: string;
+  count: number;
+  totalAmount: number;
+}
+
+export interface PaymentStatsResponse {
+  statusStats: {
+    [key: string]: {
+      count: number;
+      totalAmount: number;
+    };
+  };
+  methodStats: PaymentMethodStat[];
+  period: number;
+}
+
+export interface RatedProduct {
+  productId: number;
+  productName: string;
+  skuId: string;
+  basePrice: number;
+  mainImage: string | null;
+  averageRating: number;
+  reviewCount: number;
+}
+
+export interface RatedProductsResponse {
+  topRated: RatedProduct[];
+  bottomRated: RatedProduct[];
+  period: number;
+}
+
+export interface TopCustomer {
+  userId: number;
+  name: string;
+  email: string;
+  avatar: string | null;
+  totalSpent: number;
+  orderCount: number;
+  averageOrderValue: number;
+}
+
+export interface TopCustomersResponse {
+  customers: TopCustomer[];
+  period: number;
+}
+
+export interface RevenueByCategoryItem {
+  categoryId: number;
+  categoryName: string;
+  totalRevenue: number;
+  totalQuantity: number;
+  orderCount: number;
+}
+
+export interface RevenueByCategoryResponse {
+  revenueByCategory: RevenueByCategoryItem[];
+  totalRevenue: number;
+  period: number;
+}
+
+class ReportApi {
+  private baseUrl = '/admin/reports';
+
+  async getOverview(params?: { period?: number }): Promise<ApiResponse<OverviewStats>> {
+    return apiClient.get<OverviewStats>(`${this.baseUrl}/overview`, params);
+  }
+
+  async getRevenueByPeriod(params?: { period?: number }): Promise<ApiResponse<RevenueByPeriodResponse>> {
+    return apiClient.get<RevenueByPeriodResponse>(`${this.baseUrl}/revenue`, params);
+  }
+
+  async getTopSellingProducts(params?: { limit?: number; period?: number }): Promise<ApiResponse<TopSellingProductsResponse>> {
+    return apiClient.get<TopSellingProductsResponse>(`${this.baseUrl}/top-products`, params);
+  }
+
+  async getInventoryStatus(params?: { lowStockThreshold?: number }): Promise<ApiResponse<InventoryStatusResponse>> {
+    return apiClient.get<InventoryStatusResponse>(`${this.baseUrl}/inventory`, params);
+  }
+
+  async getOrderStats(params?: { period?: number }): Promise<ApiResponse<OrderStatsResponse>> {
+    return apiClient.get<OrderStatsResponse>(`${this.baseUrl}/orders`, params);
+  }
+
+  async getPaymentStats(params?: { period?: number }): Promise<ApiResponse<PaymentStatsResponse>> {
+    return apiClient.get<PaymentStatsResponse>(`${this.baseUrl}/payments`, params);
+  }
+
+  async getRatedProducts(params?: { limit?: number; period?: number }): Promise<ApiResponse<RatedProductsResponse>> {
+    return apiClient.get<RatedProductsResponse>(`${this.baseUrl}/rated-products`, params);
+  }
+
+  async getTopCustomers(params?: { limit?: number; period?: number }): Promise<ApiResponse<TopCustomersResponse>> {
+    return apiClient.get<TopCustomersResponse>(`${this.baseUrl}/top-customers`, params);
+  }
+
+  async getRevenueByCategory(params?: { period?: number }): Promise<ApiResponse<RevenueByCategoryResponse>> {
+    return apiClient.get<RevenueByCategoryResponse>(`${this.baseUrl}/revenue-by-category`, params);
+  }
+}
+
+export const reportApi = new ReportApi();
