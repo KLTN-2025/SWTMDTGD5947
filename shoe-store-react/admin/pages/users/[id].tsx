@@ -51,7 +51,7 @@ export default function EditUser() {
         password: "",
         roleId: user.roleId?.toString() || "",
         isActive: user.isActive ?? true,
-        phone: user.profile?.phoneNumber || "",
+        phone: (user.profile as any)?.phone || user.profile?.phoneNumber || "",
         address: user.profile?.address || "",
       };
       setFormData(newFormData);
