@@ -216,7 +216,8 @@ export const adminCategoryApi = new AdminCategoryApi();
 export interface UserProfile {
   id: number;
   userId: number;
-  phoneNumber?: string | null; // Match Laravel backend field name
+  phone?: string | null; // Database column name
+  phoneNumber?: string | null; // Alternative field name (for compatibility)
   address?: string | null;
   dateOfBirth?: string | null;
   createdAt: string;

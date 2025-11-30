@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::create('sizes', function (Blueprint $table) {
             $table->id();
-            $table->enum('nameSize', ['S', 'M', 'L']);
+            $table->string('nameSize', 50); // hoặc integer nếu bạn muốn
             $table->text('description')->nullable();
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
             $table->timestamp('deletedAt')->nullable();
         });
     }
+
 
     /**
      * Reverse the migrations.

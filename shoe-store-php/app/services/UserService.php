@@ -534,7 +534,7 @@ class UserService
                 ]);
 
                 $profileData = [
-                    'phoneNumber' => $data['phone'] ?? null,
+                    'phone' => $data['phone'] ?? null,
                     'address' => $data['address'] ?? null,
                 ];
 

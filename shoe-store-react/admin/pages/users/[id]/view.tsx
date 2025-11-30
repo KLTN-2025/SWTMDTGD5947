@@ -170,7 +170,7 @@ export default function ViewUser() {
                   <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm text-muted-foreground">Số điện thoại</p>
-                    <p className="font-medium">{(user.profile as any)?.phoneNumber || 'Chưa cập nhật'}</p>
+                    <p className="font-medium">{(user.profile as any)?.phone || (user.profile as any)?.phoneNumber || 'Chưa cập nhật'}</p>
                   </div>
                 </div>
 
