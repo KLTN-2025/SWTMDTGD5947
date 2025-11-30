@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('user_profile', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('userId')->unique();
-            $table->string('phone', 20)->nullable();
+            $table->string('phoneNumber', 20)->nullable();
             $table->string('address', 255)->nullable();
             $table->timestamp('createdAt')->useCurrent();
             $table->timestamp('updatedAt')->useCurrent()->useCurrentOnUpdate();
