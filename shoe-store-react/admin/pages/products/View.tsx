@@ -173,6 +173,31 @@ export default function ProductView() {
                     </TableCell>
                   </TableRow>
                   <TableRow>
+                    <TableCell className="font-medium">Kích thước</TableCell>
+                    <TableCell>
+                      {product.variants && product.variants.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {product.variants.map((variant: any) => (
+                              <Badge 
+                                key={variant.id} 
+                                variant="outline"
+                                className="flex items-center gap-2"
+                              >
+                                <span className="font-semibold">{variant.size?.nameSize || 'N/A'}</span>
+                                <span className="text-xs text-gray-500">
+                                  ({variant.price?.toLocaleString('vi-VN')}₫)
+                                </span>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
                     <TableCell className="font-medium">Ngày tạo</TableCell>
                     <TableCell>
                       {new Date(product.createdAt).toLocaleString("vi-VN")}

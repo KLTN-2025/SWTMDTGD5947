@@ -44,6 +44,7 @@ export interface CreateProductRequest {
   quantity: number;
   category_ids?: number[];
   color_ids?: number[];
+  variants?: Array<{ sizeId: number; price: number }>;
   images?: File[];
 }
 
@@ -101,6 +102,13 @@ export class AdminProductApi {
     if (data.color_ids && data.color_ids.length > 0) {
       data.color_ids.forEach((id, index) => {
         formData.append(`color_ids[${index}]`, id.toString());
+      });
+    }
+    
+    if (data.variants && data.variants.length > 0) {
+      data.variants.forEach((variant, index) => {
+        formData.append(`variants[${index}][sizeId]`, variant.sizeId.toString());
+        formData.append(`variants[${index}][price]`, variant.price.toString());
       });
     }
     
@@ -377,6 +385,27 @@ export class ColorApi {
 }
 
 export const colorApi = new ColorApi();
+
+// Size Types and API
+export interface Size {
+  id: number;
+  nameSize: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
+}
+
+export class SizeApi {
+  private baseUrl = '/sizes';
+
+  // Get all sizes
+  async getSizes(): Promise<ApiResponse<Size[]>> {
+    return apiClient.get<Size[]>(this.baseUrl);
+  }
+}
+
+export const sizeApi = new SizeApi();
 
 // Customer Types
 export interface CustomerProfile {
