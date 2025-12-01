@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useAdminProducts } from "../../lib/use-admin-products";
 import { useAdminCategories } from "../../lib/use-admin-categories";
 import { useColors } from "../../lib/use-colors";
+import { useSizes } from "../../lib/use-sizes";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +19,7 @@ export default function ProductNew() {
   const { createProduct } = useAdminProducts();
   const { categories } = useAdminCategories();
   const { colors, loading: colorsLoading } = useColors();
+  const { sizes, loading: sizesLoading } = useSizes();
   
   const [skuId, setSkuId] = useState("");
   const [name, setName] = useState("");
@@ -27,6 +29,7 @@ export default function ProductNew() {
   const [status, setStatus] = useState<'IN_STOCK' | 'SOLD_OUT' | 'PRE_SALE'>('IN_STOCK');
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [colorIds, setColorIds] = useState<number[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<Record<number, number>>({}); // sizeId -> price
   const [images, setImages] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -47,8 +50,19 @@ export default function ProductNew() {
       return;
     }
 
+    if (Object.keys(selectedSizes).length === 0) {
+      toast.error("Vui lòng chọn ít nhất một kích thước");
+      return;
+    }
+
     try {
       setLoading(true);
+      // Convert selectedSizes to variants format
+      const variants = Object.entries(selectedSizes).map(([sizeId, price]) => ({
+        sizeId: parseInt(sizeId),
+        price: price || basePrice, // Use basePrice as default if price not set
+      }));
+
       await createProduct({
         skuId,
         name,
@@ -58,6 +72,7 @@ export default function ProductNew() {
         status,
         category_ids: categoryIds,
         color_ids: colorIds,
+        variants,
         images,
       });
       // Hook already shows toast, just navigate
@@ -219,6 +234,71 @@ export default function ProductNew() {
                     )}
                     {color.name}
                   </label>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kích thước sản phẩm</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {sizesLoading ? (
+              <p className="text-sm text-gray-500">Đang tải kích thước...</p>
+            ) : sizes.length === 0 ? (
+              <p className="text-sm text-gray-500">Chưa có kích thước nào</p>
+            ) : (
+              sizes.map((size) => (
+                <div key={size.id} className="flex items-center gap-4 p-3 border rounded-lg">
+                  <Checkbox
+                    id={`size-${size.id}`}
+                    checked={selectedSizes.hasOwnProperty(size.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedSizes({
+                          ...selectedSizes,
+                          [size.id]: basePrice || 0,
+                        });
+                      } else {
+                        const newSizes = { ...selectedSizes };
+                        delete newSizes[size.id];
+                        setSelectedSizes(newSizes);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`size-${size.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                  >
+                    {size.nameSize}
+                    {size.description && (
+                      <span className="text-xs text-gray-500 ml-2">({size.description})</span>
+                    )}
+                  </label>
+                  {selectedSizes.hasOwnProperty(size.id) && (
+                    <div className="flex items-center gap-2 w-40">
+                      <Label htmlFor={`size-price-${size.id}`} className="text-xs whitespace-nowrap">Giá:</Label>
+                      <Input
+                        id={`size-price-${size.id}`}
+                        type="number"
+                        placeholder="Giá"
+                        value={selectedSizes[size.id] || ''}
+                        onChange={(e) => {
+                          const price = Number(e.target.value);
+                          setSelectedSizes({
+                            ...selectedSizes,
+                            [size.id]: price || basePrice || 0,
+                          });
+                        }}
+                        className="h-8 text-sm"
+                        min="0"
+                      />
+                    </div>
+                  )}
                 </div>
               ))
             )}

@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ColorController;
+use App\Http\Controllers\SizeController;
 use App\Http\Controllers\ChatBoxController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\OrderController;
@@ -87,6 +88,9 @@ Route::group(['prefix' => 'categories'], function () {
 
 // Colors
 Route::get('/colors', [ColorController::class, 'index']);
+
+// Sizes
+Route::get('/sizes', [SizeController::class, 'index']);
 
 // Reviews
 Route::group(['prefix' => 'reviews', 'middleware' => ['user']], function () {

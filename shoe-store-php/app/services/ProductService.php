@@ -360,6 +360,9 @@ class ProductService
             'category_ids.*' => 'integer|exists:categories,id',
             'color_ids' => 'nullable|array',
             'color_ids.*' => 'integer|exists:colors,id',
+            'variants' => 'nullable|array',
+            'variants.*.sizeId' => 'required|integer|exists:sizes,id',
+            'variants.*.price' => 'required|numeric|min:0',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ];
@@ -456,6 +459,19 @@ class ProductService
                 // Xử lý màu sắc
                 if (!empty($data['color_ids'])) {
                     $product->colors()->attach($data['color_ids']);
+                }
+
+                // Xử lý variants (sizes)
+                if (!empty($data['variants'])) {
+                    foreach ($data['variants'] as $variant) {
+                        \App\Models\ProductVariant::create([
+                            'productId' => $product->id,
+                            'sizeId' => $variant['sizeId'],
+                            'price' => $variant['price'],
+                            'startDate' => now(),
+                            'endDate' => now()->addYear(), // Default 1 year
+                        ]);
+                    }
                 }
 
                 // Xử lý upload ảnh
