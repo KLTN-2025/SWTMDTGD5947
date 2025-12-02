@@ -105,6 +105,7 @@ class DatabaseSeeder extends Seeder
     private function seedRoles(): void
     {
         $roles = [
+            ['name' => 'SUPER_ADMIN'],
             ['name' => 'ADMIN'],
             ['name' => 'USER'],
             ['name' => 'MODERATOR'],
@@ -224,7 +225,7 @@ class DatabaseSeeder extends Seeder
             // Sử dụng DB::table vì migration có 'phone' nhưng model có 'phoneNumber' trong fillable
             DB::table('user_profile')->insert([
                 'userId' => $users[$i]->id,
-                'phone' => $phones[$i] ?? null,
+                'phoneNumber' => $phones[$i] ?? null,
                 'address' => $addresses[$i] ?? null,
                 'createdAt' => now(),
                 'updatedAt' => now(),

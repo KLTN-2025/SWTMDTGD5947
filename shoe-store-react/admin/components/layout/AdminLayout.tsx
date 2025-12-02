@@ -141,15 +141,15 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     }
   };
   const navigation = [
-    { name: 'Tổng quan', href: '/admin', icon: Home, current: false, badge: null },
-    { name: 'Sản phẩm', href: '/admin/products', icon: Box, current: false, badge: '156' },
-    { name: 'Danh mục', href: '/admin/categories', icon: Tags, current: false, badge: null },
-    { name: 'Đơn hàng', href: '/admin/orders', icon: ShoppingCart, current: false, badge: '12' },
-    { name: 'Khách hàng', href: '/admin/customers', icon: Users, current: false, badge: '2.1k' },
-    { name: 'Người dùng', href: '/admin/users', icon: UserCog, current: false, badge: null },
-    { name: 'Chatbot', href: '/admin/chatbot', icon: Bot, current: false, badge: null },
-    { name: 'Huấn luyện AI', href: '/admin/chatbot/train', icon: Sparkles, current: false, badge: null },
-    { name: 'Thống kê', href: '/admin/reports', icon: BarChart3, current: false, badge: null },
+    { name: 'Tổng quan', href: '/admin', icon: Home, current: false },
+    { name: 'Sản phẩm', href: '/admin/products', icon: Box, current: false },
+    { name: 'Danh mục', href: '/admin/categories', icon: Tags, current: false },
+    { name: 'Đơn hàng', href: '/admin/orders', icon: ShoppingCart, current: false },
+    { name: 'Khách hàng', href: '/admin/customers', icon: Users, current: false },
+    { name: 'Người dùng', href: '/admin/users', icon: UserCog, current: false },
+    { name: 'Chatbot', href: '/admin/chatbot', icon: Bot, current: false },
+    { name: 'Huấn luyện AI', href: '/admin/chatbot/train', icon: Sparkles, current: false },
+    { name: 'Thống kê', href: '/admin/reports', icon: BarChart3, current: false },
   ];
 
   return (
@@ -186,11 +186,6 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
                   >
                     <item.icon className="h-6 w-6 shrink-0" />
                     <span className="flex-1">{item.name}</span>
-                    {item.badge && (
-                      <Badge variant="secondary" className="ml-auto">
-                        {item.badge}
-                      </Badge>
-                    )}
                   </NavLink>
                 </li>
               ))}

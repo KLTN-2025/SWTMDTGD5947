@@ -53,7 +53,17 @@ export default function AuthPage() {
       setIsLoading(true);
       await register(name, userName, email, pw);
       toast.success("Đăng ký thành công");
-      navigate("/");
+      
+      // Reset form
+      setName("");
+      setUserName("");
+      setEmail("");
+      setPw("");
+      
+      // Redirect to auth page after 3 seconds
+      setTimeout(() => {
+        navigate("/auth");
+      }, 3000);
     } catch (error: any) {
       toast.error(error.message || "Đăng ký thất bại");
     } finally {

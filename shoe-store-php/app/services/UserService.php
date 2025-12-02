@@ -2,6 +2,7 @@
 
 namespace App\services;
 
+use App\Helper\Constants;
 use App\Helper\HttpCode;
 use App\Helper\MsgCode;
 use App\Models\User;
@@ -139,7 +140,7 @@ class UserService
         return $updateResult['response'];
     }
 
-    public function deleteUser($id)
+    public function deleteUser($id, $currentUser = null)
     {
         $validationResult = $this->validateUserId($id);
         if (!$validationResult['isValid']) {
@@ -151,7 +152,60 @@ class UserService
             return $userResult['response'];
         }
 
-        $deleteResult = $this->performDeleteUser($userResult['user']);
+        $userToDelete = $userResult['user'];
+
+        // Get current user from auth if not provided
+        if (!$currentUser) {
+            $currentUser = auth('api')->user();
+        }
+
+        // Check if current user exists
+        if (!$currentUser) {
+            return [
+                'isDeleted' => false,
+                'response' => [
+                    'code' => HttpCode::UNAUTHORIZED,
+                    'status' => false,
+                    'msgCode' => MsgCode::UNAUTHORIZED,
+                    'message' => 'Bạn chưa đăng nhập',
+                ]
+            ];
+        }
+
+        // Load role relationship
+        $currentUser->load('role');
+        $userToDelete->load('role');
+
+        // Check if trying to delete self
+        if ($currentUser->id === $userToDelete->id) {
+            return [
+                'isDeleted' => false,
+                'response' => [
+                    'code' => HttpCode::BAD_REQUEST,
+                    'status' => false,
+                    'msgCode' => MsgCode::BAD_REQUEST,
+                    'message' => 'Bạn không thể xóa chính mình',
+                ]
+            ];
+        }
+
+        // Check if trying to delete an admin
+        if ($userToDelete->role && $userToDelete->role->name === Constants::ADMIN) {
+            // Only SUPER_ADMIN can delete admin
+            if (!$currentUser->role || $currentUser->role->name !== Constants::SUPER_ADMIN) {
+                return [
+                    'isDeleted' => false,
+                    'response' => [
+                        'code' => HttpCode::FORBIDDEN,
+                        'status' => false,
+                        'msgCode' => MsgCode::FORBIDDEN,
+                        'message' => 'Chỉ SUPER ADMIN mới được phép xóa admin',
+                    ]
+                ];
+            }
+        }
+
+        $deleteResult = $this->performDeleteUser($userToDelete);
         if (!$deleteResult['isDeleted']) {
             return $deleteResult['response'];
         }

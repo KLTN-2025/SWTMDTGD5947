@@ -106,9 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       const response = await authApi.register({ name, userName, email, password });
       
-      if (response.data) {
-        setUser(response.data);
-      }
+      // Don't auto-login after registration
+      // User needs to manually login after registration
     } catch (error) {
       if (error instanceof ApiError) {
         const validationError = error.getFirstValidationError();
