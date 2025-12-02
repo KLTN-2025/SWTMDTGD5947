@@ -25,9 +25,7 @@ import {
   AlertTriangle,
   TrendingUp,
   Grid3X3,
-  List,
-  Download,
-  Upload
+  List
 } from "lucide-react";
 
 export default function Products() {
@@ -97,14 +95,6 @@ export default function Products() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
           <Link to="/admin/products/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />

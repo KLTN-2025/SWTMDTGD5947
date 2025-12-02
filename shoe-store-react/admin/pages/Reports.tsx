@@ -16,7 +16,6 @@ import {
   Award,
   Star,
   StarOff,
-  Download,
   RefreshCw,
   Loader2,
   Search,
@@ -58,10 +57,6 @@ export default function Reports() {
   
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['reports'] });
-  };
-
-  const handleExport = () => {
-    alert('Chức năng xuất báo cáo đang được phát triển');
   };
 
   // Filter top products by search
@@ -127,10 +122,6 @@ export default function Reports() {
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm mới
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Xuất báo cáo
           </Button>
         </div>
       </div>

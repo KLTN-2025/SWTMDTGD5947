@@ -40,7 +40,8 @@ class UserController extends Controller
 
     public function destroy($id)
     {
-        $result = $this->userService->deleteUser($id);
+        $currentUser = auth('api')->user();
+        $result = $this->userService->deleteUser($id, $currentUser);
         return response()->json($result);
     }
 
