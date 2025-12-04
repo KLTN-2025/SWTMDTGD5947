@@ -13,3 +13,9 @@ Schedule::command('reports:send-monthly')
     ->monthlyOn(1, '08:00')
     ->timezone('Asia/Ho_Chi_Minh')
     ->description('Gửi email báo cáo thống kê hàng tháng cho tất cả admin');
+
+// Auto-cancel unpaid orders after 1 hour (chạy mỗi 10 phút)
+Schedule::command('orders:auto-cancel-unpaid')
+    ->everyTenMinutes()
+    ->timezone('Asia/Ho_Chi_Minh')
+    ->description('Tự động hủy các đơn hàng chưa thanh toán sau 1 giờ');

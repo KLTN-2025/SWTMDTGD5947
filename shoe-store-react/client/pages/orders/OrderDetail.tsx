@@ -19,8 +19,14 @@ import {
   CreditCard,
   ArrowLeft,
   AlertCircle,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { paymentApi } from "@/lib/payment-api";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api-client";
 
 function statusIcon(status: string) {
   switch (status) {
@@ -51,12 +57,39 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isRetryingPayment, setIsRetryingPayment] = useState(false);
+  const [remainingMinutes, setRemainingMinutes] = useState(0);
 
   useEffect(() => {
     if (id) {
       loadOrderDetail(parseInt(id));
     }
   }, [id]);
+
+  // Countdown timer for payment expiry
+  useEffect(() => {
+    if (!order || !order.canRetryPayment || !order.remainingPaymentMinutes) {
+      return;
+    }
+
+    setRemainingMinutes(order.remainingPaymentMinutes);
+
+    const timer = setInterval(() => {
+      setRemainingMinutes((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          // Reload page to update order status
+          if (id) {
+            loadOrderDetail(parseInt(id));
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 60000); // Every minute
+
+    return () => clearInterval(timer);
+  }, [order?.canRetryPayment, order?.remainingPaymentMinutes, id]);
 
   const loadOrderDetail = async (orderId: number) => {
     try {
@@ -96,15 +129,49 @@ export default function OrderDetailPage() {
       const response = await orderApi.cancelOrder(order.id);
       
       if (response.status) {
+        toast.success('Đã hủy đơn hàng thành công');
         await loadOrderDetail(order.id);
       } else {
-        alert(response.message || 'Hủy đơn hàng thất bại');
+        toast.error(response.message || 'Hủy đơn hàng thất bại');
       }
     } catch (error) {
       console.error('Cancel order failed:', error);
-      alert('Có lỗi xảy ra khi hủy đơn hàng');
+      toast.error('Có lỗi xảy ra khi hủy đơn hàng');
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleRetryPayment = async () => {
+    if (!order) return;
+
+    try {
+      setIsRetryingPayment(true);
+      
+      const response = await paymentApi.processPayment({
+        orderId: order.id,
+        paymentMethod: order.paymentMethod as any
+      });
+
+      if (response.status && response.data?.paymentUrl) {
+        toast.success('Đang chuyển đến trang thanh toán...');
+        setTimeout(() => {
+          window.location.href = response.data!.paymentUrl!;
+        }, 1000);
+      } else {
+        toast.error(response.message || 'Không thể tạo link thanh toán');
+        setIsRetryingPayment(false);
+      }
+    } catch (error) {
+      console.error('Retry payment failed:', error);
+      
+      if (error instanceof ApiError) {
+        toast.error(error.apiMessage as string || 'Không thể tạo link thanh toán');
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo link thanh toán');
+      }
+      
+      setIsRetryingPayment(false);
     }
   };
 
@@ -188,6 +255,71 @@ export default function OrderDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Payment Status Alerts */}
+        {order.canRetryPayment && remainingMinutes > 0 && (
+          <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertTitle className="text-orange-900 dark:text-orange-100">
+              Chưa hoàn tất thanh toán
+            </AlertTitle>
+            <AlertDescription className="text-orange-800 dark:text-orange-200">
+              <div className="space-y-3">
+                <p>
+                  Đơn hàng của bạn chưa được thanh toán. Còn <strong className="font-semibold">{remainingMinutes} phút</strong> để hoàn tất thanh toán.
+                  Sau thời gian này, đơn hàng sẽ tự động bị hủy.
+                </p>
+                <Button 
+                  onClick={handleRetryPayment}
+                  disabled={isRetryingPayment}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  {isRetryingPayment ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Thanh toán ngay
+                    </>
+                  )}
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!order.canRetryPayment && order.status === 'PENDING' && order.paymentStatus !== 'UNPAID' && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Đơn hàng đã hết hạn thanh toán</AlertTitle>
+            <AlertDescription>
+              <div className="space-y-3">
+                <p>
+                  Đơn hàng này đã quá thời gian thanh toán (1 giờ) và sẽ sớm bị hủy tự động.
+                  Vui lòng đặt hàng mới nếu bạn vẫn muốn mua sản phẩm này.
+                </p>
+                <Link to="/products">
+                  <Button variant="outline">
+                    Tiếp tục mua sắm
+                  </Button>
+                </Link>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {order.status === 'CANCELLED' && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Đơn hàng đã bị hủy</AlertTitle>
+            <AlertDescription>
+              Đơn hàng này đã bị hủy. Nếu bạn vẫn muốn mua sản phẩm, vui lòng đặt hàng mới.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Products */}

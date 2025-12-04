@@ -10,6 +10,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Role;
@@ -236,6 +237,30 @@ class CheckoutService
                     'user'
                 ]);
 
+                // Tự động tạo payment và lấy URL nếu không phải COD
+                $responseData = ['order' => $order];
+                
+                if ($paymentMethod !== 'CASH') {
+                    // Tạo payment record và lấy payment URL
+                    $paymentResult = $this->createPaymentForOrder($order, $paymentMethod);
+                    
+                    if ($paymentResult['isCreated']) {
+                        $responseData['payment'] = $paymentResult['payment'];
+                        $responseData['paymentUrl'] = $paymentResult['paymentUrl'];
+                        $responseData['transactionCode'] = $paymentResult['transactionCode'];
+                        $responseData['nextStep'] = 'redirect_to_payment';
+                        $responseData['message'] = 'Đặt hàng thành công. Vui lòng hoàn tất thanh toán.';
+                    } else {
+                        // Nếu tạo payment thất bại, vẫn giữ order nhưng báo lỗi
+                        Log::error('Payment creation failed for order', ['orderId' => $order->id]);
+                        $responseData['nextStep'] = 'payment_failed';
+                        $responseData['message'] = 'Đặt hàng thành công nhưng không thể tạo link thanh toán. Vui lòng liên hệ hỗ trợ.';
+                    }
+                } else {
+                    $responseData['nextStep'] = 'order_confirmed';
+                    $responseData['message'] = 'Đặt hàng thành công. Thanh toán khi nhận hàng.';
+                }
+
                 return [
                     'isCreated' => true,
                     'order' => $order,
@@ -243,11 +268,8 @@ class CheckoutService
                         'code' => HttpCode::SUCCESS,
                         'status' => true,
                         'msgCode' => MsgCode::SUCCESS,
-                        'message' => 'Đặt hàng thành công',
-                        'data' => [
-                            'order' => $order,
-                            'nextStep' => $paymentMethod === 'CASH' ? 'order_confirmed' : 'payment_required'
-                        ]
+                        'message' => $responseData['message'] ?? 'Đặt hàng thành công',
+                        'data' => $responseData
                     ]
                 ];
             });
@@ -264,6 +286,121 @@ class CheckoutService
                     'message' => 'Đặt hàng thất bại'
                 ]
             ];
+        }
+    }
+
+    /**
+     * Tạo payment record và lấy payment URL cho order
+     */
+    private function createPaymentForOrder($order, $paymentMethod)
+    {
+        try {
+            $transactionCode = 'TXN' . time() . rand(1000, 9999);
+
+            // Tạo payment record
+            $payment = Payment::create([
+                'orderId' => $order->id,
+                'status' => Payment::STATUS_PENDING,
+                'amount' => $order->amount,
+                'transactionCode' => $transactionCode,
+            ]);
+
+            // Tạo payment URL (MoMo hoặc payment gateway khác)
+            $paymentUrl = $this->generatePaymentUrlForCheckout($payment, $paymentMethod);
+
+            return [
+                'isCreated' => true,
+                'payment' => $payment,
+                'paymentUrl' => $paymentUrl,
+                'transactionCode' => $transactionCode
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Create payment for order failed: ' . $e->getMessage());
+            return [
+                'isCreated' => false
+            ];
+        }
+    }
+
+    /**
+     * Generate payment URL (simplified version for checkout)
+     */
+    private function generatePaymentUrlForCheckout($payment, $paymentMethod)
+    {
+        // Tích hợp MoMo
+        $endpoint = config('momo.endpoint');
+        $partnerCode = config('momo.partner_code');
+        $accessKey = config('momo.access_key');
+        $secretKey = config('momo.secret_key');
+        $redirectUrl = config('momo.redirect_url');
+        $ipnUrl = config('momo.ipn_url');
+        $requestType = config('momo.request_type', 'captureWallet');
+
+        if (empty($endpoint) || empty($partnerCode) || empty($accessKey) || empty($secretKey)) {
+            Log::warning('MoMo config is missing. Using fallback payment URL.');
+            $baseUrl = config('app.url');
+            return $baseUrl . '/payment/process/' . $payment->transactionCode;
+        }
+
+        $order = $payment->order;
+        $amount = (int) $payment->amount;
+        $orderId = $payment->transactionCode;
+        $requestId = (string) time();
+        $orderInfo = 'Thanh toan don hang #' . $order->id;
+        $extraData = '';
+
+        $rawHash = "accessKey={$accessKey}"
+            . "&amount={$amount}"
+            . "&extraData={$extraData}"
+            . "&ipnUrl={$ipnUrl}"
+            . "&orderId={$orderId}"
+            . "&orderInfo={$orderInfo}"
+            . "&partnerCode={$partnerCode}"
+            . "&redirectUrl={$redirectUrl}"
+            . "&requestId={$requestId}"
+            . "&requestType={$requestType}";
+
+        $signature = hash_hmac('sha256', $rawHash, $secretKey);
+
+        $payload = [
+            'partnerCode' => $partnerCode,
+            'partnerName' => 'Shoes Store',
+            'storeId' => 'ShoesStore001',
+            'requestId' => $requestId,
+            'amount' => (string) $amount,
+            'orderId' => $orderId,
+            'orderInfo' => $orderInfo,
+            'redirectUrl' => $redirectUrl,
+            'ipnUrl' => $ipnUrl,
+            'lang' => 'vi',
+            'extraData' => $extraData,
+            'requestType' => $requestType,
+            'signature' => $signature,
+        ];
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(45)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($endpoint, $payload);
+
+            if (!$response->ok()) {
+                Log::error('MoMo payment create failed: HTTP ' . $response->status());
+                throw new Exception('Không thể khởi tạo thanh toán MoMo');
+            }
+
+            $data = $response->json();
+
+            if (!isset($data['payUrl'])) {
+                Log::error('MoMo response missing payUrl');
+                throw new Exception('Phản hồi MoMo không hợp lệ');
+            }
+
+            return $data['payUrl'];
+        } catch (Exception $e) {
+            Log::error('MoMo integration error: ' . $e->getMessage());
+            $baseUrl = config('app.url');
+            return $baseUrl . '/payment/process/' . $payment->transactionCode;
         }
     }
 

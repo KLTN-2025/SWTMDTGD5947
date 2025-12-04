@@ -60,4 +60,44 @@ class Order extends Model
     {
         return $this->hasOne(Payment::class, 'orderId');
     }
+
+    /**
+     * Kiểm tra xem order có thể retry payment không
+     * (chưa thanh toán và chưa quá 1 giờ)
+     */
+    public function canRetryPayment(): bool
+    {
+        // Phải ở trạng thái PENDING
+        if ($this->status !== self::STATUS_PENDING) {
+            return false;
+        }
+
+        // PaymentStatus phải là PENDING hoặc FAILED
+        if (!in_array($this->paymentStatus, [self::PAYMENT_STATUS_PENDING, self::PAYMENT_STATUS_FAILED])) {
+            return false;
+        }
+
+        // Chưa quá 1 giờ kể từ khi tạo
+        $createdAt = \Carbon\Carbon::parse($this->createdAt);
+        $now = \Carbon\Carbon::now();
+        $hoursSinceCreated = $createdAt->diffInHours($now);
+
+        return $hoursSinceCreated < 1;
+    }
+
+    /**
+     * Lấy thời gian còn lại để thanh toán (phút)
+     */
+    public function getRemainingPaymentTimeInMinutes(): int
+    {
+        $createdAt = \Carbon\Carbon::parse($this->createdAt);
+        $expiresAt = $createdAt->addHour();
+        $now = \Carbon\Carbon::now();
+
+        if ($now->gte($expiresAt)) {
+            return 0;
+        }
+
+        return $now->diffInMinutes($expiresAt);
+    }
 }

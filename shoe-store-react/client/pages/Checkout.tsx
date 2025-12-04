@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ShoppingCart, MapPin, CreditCard, Truck } from 'lucide-react';
 import { checkoutApi } from '@/lib/checkout-api';
+import { paymentApi } from '@/lib/payment-api';
 import { cartApi } from '@/lib/cart-api';
 import type { CheckoutCalculation, CheckoutRequest, CartResponse } from '@/lib/api-types';
 import { formatPrice } from '@/lib/utils';
@@ -74,13 +75,44 @@ export default function Checkout() {
       const response = await checkoutApi.checkout(checkoutData);
 
       if (response.status && response.data) {
-        // Navigate to order detail page
-        navigate(`/orders/${response.data.order.id}`, {
-          state: { 
-            message: 'Đặt hàng thành công!',
-            order: response.data.order 
-          }
-        });
+        const { order, nextStep, paymentUrl, message } = response.data;
+
+        // Hiển thị thông báo nếu có
+        if (message) {
+          toast.success(message);
+        }
+
+        // Nếu là COD hoặc đã confirm
+        if (nextStep === 'order_confirmed' || paymentMethod === 'CASH') {
+          toast.success('Đặt hàng thành công!');
+          navigate(`/orders/${order.id}`, {
+            state: { 
+              message: 'Đặt hàng thành công!',
+              order
+            }
+          });
+          return;
+        }
+
+        // Nếu cần redirect đến payment gateway (MoMo)
+        if (nextStep === 'redirect_to_payment' && paymentUrl) {
+          toast.success('Đang chuyển đến trang thanh toán MoMo...');
+          // Delay 1s để user thấy toast message
+          setTimeout(() => {
+            window.location.href = paymentUrl;
+          }, 1000);
+          return;
+        }
+
+        // Nếu payment failed nhưng order đã tạo
+        if (nextStep === 'payment_failed') {
+          toast.error('Không thể tạo link thanh toán. Vui lòng liên hệ hỗ trợ.');
+          navigate(`/orders/${order.id}`);
+          return;
+        }
+
+        // Fallback: điều hướng về chi tiết đơn
+        navigate(`/orders/${order.id}`);
       } else {
         toast.error(response.message || 'Đặt hàng thất bại');
       }
@@ -210,12 +242,15 @@ export default function Checkout() {
                   </Label>
                 </div>
                 
-                <div className="flex items-center space-x-2 p-3 border rounded-lg opacity-50">
-                  <RadioGroupItem value="E_WALLET" id="ewallet" disabled />
-                  <Label htmlFor="ewallet" className="flex-1 cursor-not-allowed">
-                    <div>
-                      <div className="font-medium">Ví điện tử</div>
-                      <div className="text-sm text-gray-600">MoMo, ZaloPay (Sắp có)</div>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                  <RadioGroupItem value="E_WALLET" id="ewallet" />
+                  <Label htmlFor="ewallet" className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">Thanh toán qua ví MoMo</div>
+                        <div className="text-sm text-gray-600">Quét mã QR hoặc mở ứng dụng MoMo để thanh toán</div>
+                      </div>
+                      <Badge variant="outline">MoMo</Badge>
                     </div>
                   </Label>
                 </div>

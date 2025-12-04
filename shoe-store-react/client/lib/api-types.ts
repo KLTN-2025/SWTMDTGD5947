@@ -190,6 +190,8 @@ export interface Order {
   itemCount: number;
   totalQuantity: number;
   canCancel: boolean;
+  canRetryPayment?: boolean;
+  remainingPaymentMinutes?: number;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -225,7 +227,11 @@ export interface CheckoutRequest {
 
 export interface CheckoutResponse {
   order: Order;
-  nextStep: 'order_confirmed' | 'payment_required';
+  payment?: any;
+  paymentUrl?: string;
+  transactionCode?: string;
+  nextStep: 'order_confirmed' | 'payment_required' | 'redirect_to_payment' | 'payment_failed';
+  message?: string;
 }
 
 // Cart Response (from cart-api.ts)

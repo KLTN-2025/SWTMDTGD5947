@@ -104,6 +104,10 @@ class OrderService
         $order->paymentStatusDisplay = $this->getPaymentStatusDisplay($order->paymentStatus);
         $order->canCancel = in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_CONFIRMED]);
         
+        // Thêm thông tin retry payment
+        $order->canRetryPayment = $order->canRetryPayment();
+        $order->remainingPaymentMinutes = $order->canRetryPayment() ? $order->getRemainingPaymentTimeInMinutes() : 0;
+        
         // Thêm timeline status
         $order->statusTimeline = $this->getStatusTimeline($order);
         

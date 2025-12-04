@@ -9,6 +9,7 @@ use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Http;
 use Exception;
 
 class PaymentService 
@@ -245,6 +246,23 @@ class PaymentService
             ];
         }
 
+        // Kiểm tra thời gian: chỉ cho phép thanh toán trong vòng 1 giờ
+        $createdAt = \Carbon\Carbon::parse($order->createdAt);
+        $now = \Carbon\Carbon::now();
+        $hoursSinceCreated = $createdAt->diffInHours($now);
+
+        if ($hoursSinceCreated >= 1) {
+            return [
+                'isValid' => false,
+                'response' => [
+                    'code' => HttpCode::BAD_REQUEST,
+                    'status' => false,
+                    'msgCode' => MsgCode::VALIDATION_ERROR,
+                    'message' => 'Đơn hàng đã quá thời gian thanh toán (1 giờ). Vui lòng đặt hàng mới.'
+                ]
+            ];
+        }
+
         return ['isValid' => true];
     }
 
@@ -423,9 +441,86 @@ class PaymentService
 
     private function generatePaymentUrl($payment) 
     {
-        // Tạo URL thanh toán (VNPay, MoMo, etc.)
-        // Đây là mock URL, thực tế cần integrate với payment gateway
-        $baseUrl = config('app.url');
-        return $baseUrl . '/payment/process/' . $payment->transactionCode;
+        // Tích hợp thanh toán MoMo (sử dụng Capture Wallet API)
+        $endpoint = config('momo.endpoint');
+        $partnerCode = config('momo.partner_code');
+        $accessKey = config('momo.access_key');
+        $secretKey = config('momo.secret_key');
+        $redirectUrl = config('momo.redirect_url');
+        $ipnUrl = config('momo.ipn_url');
+        $requestType = config('momo.request_type', 'captureWallet');
+
+        if (empty($endpoint) || empty($partnerCode) || empty($accessKey) || empty($secretKey)) {
+            // Nếu chưa cấu hình MoMo đầy đủ, fallback về URL mock (tránh lỗi runtime)
+            Log::warning('MoMo config is missing. Using fallback payment URL.');
+            $baseUrl = config('app.url');
+            return $baseUrl . '/payment/process/' . $payment->transactionCode;
+        }
+
+        $order = $payment->order;
+        $amount = (int) $payment->amount;
+
+        // Sử dụng transactionCode làm orderId bên MoMo để dễ mapping ngược
+        $orderId = $payment->transactionCode;
+        $requestId = (string) time();
+        $orderInfo = 'Thanh toan don hang #' . $order->id;
+        $extraData = '';
+
+        // Chuỗi rawHash theo tài liệu MoMo
+        $rawHash = "accessKey={$accessKey}"
+            . "&amount={$amount}"
+            . "&extraData={$extraData}"
+            . "&ipnUrl={$ipnUrl}"
+            . "&orderId={$orderId}"
+            . "&orderInfo={$orderInfo}"
+            . "&partnerCode={$partnerCode}"
+            . "&redirectUrl={$redirectUrl}"
+            . "&requestId={$requestId}"
+            . "&requestType={$requestType}";
+
+        $signature = hash_hmac('sha256', $rawHash, $secretKey);
+
+        $payload = [
+            'partnerCode' => $partnerCode,
+            'partnerName' => 'Shoes Store',
+            'storeId' => 'ShoesStore001',
+            'requestId' => $requestId,
+            'amount' => (string) $amount,
+            'orderId' => $orderId,
+            'orderInfo' => $orderInfo,
+            'redirectUrl' => $redirectUrl,
+            'ipnUrl' => $ipnUrl,
+            'lang' => 'vi',
+            'extraData' => $extraData,
+            'requestType' => $requestType,
+            'signature' => $signature,
+        ];
+
+        try {
+            $response = Http::timeout(45)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($endpoint, $payload);
+
+            if (!$response->ok()) {
+                Log::error('MoMo payment create failed: HTTP ' . $response->status(), [
+                    'body' => $response->body(),
+                ]);
+                throw new Exception('Không thể khởi tạo thanh toán MoMo');
+            }
+
+            $data = $response->json();
+
+            if (!isset($data['payUrl'])) {
+                Log::error('MoMo response missing payUrl', ['response' => $data]);
+                throw new Exception('Phản hồi MoMo không hợp lệ');
+            }
+
+            return $data['payUrl'];
+        } catch (Exception $e) {
+            Log::error('MoMo integration error: ' . $e->getMessage());
+            // Fallback: vẫn trả về URL mock để không làm vỡ flow, nhưng FE nên hiển thị lỗi phù hợp
+            $baseUrl = config('app.url');
+            return $baseUrl . '/payment/process/' . $payment->transactionCode;
+        }
     }
 }
