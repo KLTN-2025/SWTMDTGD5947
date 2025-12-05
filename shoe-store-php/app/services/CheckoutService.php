@@ -328,7 +328,17 @@ class CheckoutService
      */
     private function generatePaymentUrlForCheckout($payment, $paymentMethod)
     {
-        // Tích hợp MoMo
+        // Xác định gateway dựa vào paymentMethod
+        if ($paymentMethod === 'BANK_TRANSFER') {
+            return $this->generateVNPayUrlForCheckout($payment);
+        }
+        
+        // Default: MoMo cho E_WALLET
+        return $this->generateMoMoUrlForCheckout($payment);
+    }
+
+    private function generateMoMoUrlForCheckout($payment)
+    {
         $endpoint = config('momo.endpoint');
         $partnerCode = config('momo.partner_code');
         $accessKey = config('momo.access_key');
@@ -402,6 +412,78 @@ class CheckoutService
             $baseUrl = config('app.url');
             return $baseUrl . '/payment/process/' . $payment->transactionCode;
         }
+    }
+
+    private function generateVNPayUrlForCheckout($payment)
+    {
+        $vnpUrl = config('vnpay.url');
+        $vnpTmnCode = config('vnpay.tmn_code');
+        $vnpHashSecret = config('vnpay.hash_secret');
+        $vnpReturnUrl = config('vnpay.return_url');
+
+        if (empty($vnpUrl) || empty($vnpTmnCode) || empty($vnpHashSecret)) {
+            Log::warning('VNPay config is missing. Using fallback payment URL.');
+            $baseUrl = config('app.url');
+            return $baseUrl . '/payment/process/' . $payment->transactionCode;
+        }
+
+        $order = $payment->order;
+        $amount = (int) $payment->amount * 100; // VNPay yêu cầu amount * 100
+
+        // Get IP address, fallback to 127.0.0.1 for local testing
+        $ipAddr = request()->ip();
+        if ($ipAddr === '::1' || empty($ipAddr)) {
+            $ipAddr = '127.0.0.1';
+        }
+
+        $inputData = [
+            'vnp_Version' => '2.1.0',
+            'vnp_TmnCode' => $vnpTmnCode,
+            'vnp_Amount' => (string) $amount, // Convert to string
+            'vnp_Command' => 'pay',
+            'vnp_CreateDate' => date('YmdHis'),
+            'vnp_CurrCode' => 'VND',
+            'vnp_IpAddr' => $ipAddr,
+            'vnp_Locale' => 'vn',
+            'vnp_OrderInfo' => 'Thanh toan don hang #' . $order->id,
+            'vnp_OrderType' => 'other',
+            'vnp_ReturnUrl' => $vnpReturnUrl,
+            'vnp_TxnRef' => $payment->transactionCode,
+        ];
+
+        // Sắp xếp theo key
+        ksort($inputData);
+
+        // Build query string và hash data
+        $query = '';
+        $hashdata = '';
+        $i = 0;
+        
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashdata .= '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashdata .= urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+            $query .= urlencode($key) . "=" . urlencode($value) . '&';
+        }
+
+        // Generate secure hash
+        $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnpHashSecret);
+        
+        // Build final URL
+        $vnpUrl = $vnpUrl . "?" . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+
+        // Log for debugging
+        Log::info('VNPay URL generated', [
+            'transactionCode' => $payment->transactionCode,
+            'amount' => $amount,
+            'hashdata' => substr($hashdata, 0, 100) . '...',
+            'signature' => substr($vnpSecureHash, 0, 20) . '...'
+        ]);
+
+        return $vnpUrl;
     }
 
     public function calculateCheckout($user) 

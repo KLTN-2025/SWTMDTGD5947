@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\services\PaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -34,12 +35,11 @@ class PaymentController extends Controller
     }
 
     /**
-     * GET /api/payments/return - Return URL sau khi thanh toán
+     * GET /api/payments/return - Return URL sau khi thanh toán (MoMo)
      */
     public function paymentReturn(Request $request) 
     {
-        // Xử lý return từ payment gateway (VNPay, MoMo, etc.)
-        // Ưu tiên đọc theo format MoMo nếu có
+        // Xử lý return từ MoMo
         $transactionCode = $request->input('transaction_code') ?? $request->input('orderId');
 
         // MoMo: resultCode = 0 => thành công
@@ -49,7 +49,7 @@ class PaymentController extends Controller
             $amount = $request->input('amount');
         } else {
             // Fallback generic
-        $status = $request->input('status', 'PAID');
+            $status = $request->input('status', 'PAID');
             $amount = $request->input('amount');
         }
         
@@ -63,7 +63,76 @@ class PaymentController extends Controller
         $result = $this->paymentService->confirmPayment($confirmRequest);
         
         // Redirect về frontend với kết quả
-        $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+        // MoMo thường không dùng route này (redirect trực tiếp về frontend)
+        // Nhưng giữ lại để fallback, dùng env variable
+        $frontendUrl = env('FRONTEND_URL', env('FRONT_END_URL', 'http://localhost:5001'));
+        
+        if ($result['status']) {
+            return redirect($frontendUrl . '/orders/' . $result['data']['order']['id'] . '?payment=success');
+        } else {
+            return redirect($frontendUrl . '/orders?payment=failed');
+        }
+    }
+
+    /**
+     * GET /api/payments/vnpay/return - Return URL sau khi thanh toán VNPay
+     */
+    public function vnpayReturn(Request $request) 
+    {
+        // Verify VNPay signature
+        $vnpHashSecret = config('vnpay.hash_secret');
+        $inputData = $request->all();
+        $vnpSecureHash = $inputData['vnp_SecureHash'] ?? '';
+        
+        unset($inputData['vnp_SecureHash']);
+        unset($inputData['vnp_SecureHashType']);
+        
+        ksort($inputData);
+        $hashData = '';
+        $i = 0;
+        
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashData .= urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+        }
+        
+        $secureHash = hash_hmac('sha512', $hashData, $vnpHashSecret);
+        
+        // Lấy thông tin giao dịch
+        $transactionCode = $request->input('vnp_TxnRef');
+        $responseCode = $request->input('vnp_ResponseCode');
+        $amount = $request->input('vnp_Amount') / 100; // VNPay trả về amount * 100
+        
+        // Verify signature
+        if ($secureHash !== $vnpSecureHash) {
+            Log::warning('VNPay return signature verification failed', [
+                'transactionCode' => $transactionCode,
+                'ip' => $request->ip()
+            ]);
+            
+            $frontendUrl = 'http://localhost:5001';
+            return redirect($frontendUrl . '/orders?payment=failed&error=invalid_signature');
+        }
+        
+        // VNPay: responseCode = '00' => thành công
+        $status = $responseCode === '00' ? 'PAID' : 'FAILED';
+        
+        // Tạo request object để gọi confirmPayment
+        $confirmRequest = new Request([
+            'transactionCode' => $transactionCode,
+            'status' => $status,
+            'amount' => $amount,
+        ]);
+
+        $result = $this->paymentService->confirmPayment($confirmRequest);
+        
+        // Redirect về frontend với kết quả
+        // Hardcode localhost cho payment redirect
+        $frontendUrl = 'http://localhost:5001';
         
         if ($result['status']) {
             return redirect($frontendUrl . '/orders/' . $result['data']['order']['id'] . '?payment=success');
@@ -83,7 +152,7 @@ class PaymentController extends Controller
         if ($request->has('orderId') && $request->has('resultCode')) {
             // Verify MoMo signature
             if (!$this->verifyMoMoSignature($request)) {
-                \Log::warning('MoMo webhook signature verification failed', [
+                Log::warning('MoMo webhook signature verification failed', [
                     'orderId' => $request->input('orderId'),
                     'ip' => $request->ip()
                 ]);
@@ -122,7 +191,7 @@ class PaymentController extends Controller
         $secretKey = config('momo.secret_key');
         
         if (empty($secretKey)) {
-            \Log::warning('MoMo secret key not configured, skipping signature verification');
+            Log::warning('MoMo secret key not configured, skipping signature verification');
             return true; // Skip verification if not configured
         }
 

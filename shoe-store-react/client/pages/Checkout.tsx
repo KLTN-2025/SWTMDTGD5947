@@ -25,6 +25,7 @@ export default function Checkout() {
   const [cartData, setCartData] = useState<CartResponse | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CREDIT_CARD' | 'E_WALLET' | 'BANK_TRANSFER'>('CASH');
+  const [paymentGateway, setPaymentGateway] = useState<'momo' | 'vnpay'>('momo');
 
   // Load checkout calculation and cart data
   useEffect(() => {
@@ -94,9 +95,10 @@ export default function Checkout() {
           return;
         }
 
-        // Nếu cần redirect đến payment gateway (MoMo)
+        // Nếu cần redirect đến payment gateway (MoMo/VNPay)
         if (nextStep === 'redirect_to_payment' && paymentUrl) {
-          toast.success('Đang chuyển đến trang thanh toán MoMo...');
+          const gatewayName = paymentMethod === 'BANK_TRANSFER' ? 'VNPay' : 'MoMo';
+          toast.success(`Đang chuyển đến trang thanh toán ${gatewayName}...`);
           // Delay 1s để user thấy toast message
           setTimeout(() => {
             window.location.href = paymentUrl;
@@ -255,12 +257,15 @@ export default function Checkout() {
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-2 p-3 border rounded-lg opacity-50">
-                  <RadioGroupItem value="BANK_TRANSFER" id="bank" disabled />
-                  <Label htmlFor="bank" className="flex-1 cursor-not-allowed">
-                    <div>
-                      <div className="font-medium">Chuyển khoản ngân hàng</div>
-                      <div className="text-sm text-gray-600">VNPay, Internet Banking (Sắp có)</div>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                  <RadioGroupItem value="BANK_TRANSFER" id="bank" />
+                  <Label htmlFor="bank" className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">Chuyển khoản ngân hàng</div>
+                        <div className="text-sm text-gray-600">VNPay, ATM, Internet Banking, Visa/Master</div>
+                      </div>
+                      <Badge variant="outline">VNPay</Badge>
                     </div>
                   </Label>
                 </div>

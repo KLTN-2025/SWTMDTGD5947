@@ -76,7 +76,8 @@ Route::group(['prefix' => 'orders', 'middleware' => ['user']], function () {
 Route::group(['prefix' => 'payments'], function () {
     Route::post('/', [PaymentController::class, 'processPayment'])->middleware('user');
     Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
-    Route::get('/return', [PaymentController::class, 'paymentReturn']);
+    Route::get('/return', [PaymentController::class, 'paymentReturn']); // MoMo return
+    Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']); // VNPay return
     Route::post('/webhook', [PaymentController::class, 'paymentWebhook']);
 });
 
