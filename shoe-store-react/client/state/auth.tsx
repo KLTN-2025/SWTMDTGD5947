@@ -34,51 +34,50 @@ interface AuthContextValue {
   checkAuth: () => Promise<void>;
 }
 
-const KEY = "shoe_store_user_v1";
-
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on mount
+  // Check authentication status on mount (get user from cookie via API)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const userData = JSON.parse(raw);
-        setUser(userData);
-      }
-    } catch (error) {
-      console.error('Error loading user from localStorage:', error);
-      localStorage.removeItem(KEY);
-    } finally {
+    // Only check auth if we might have a token cookie
+    // Check if we have any cookies at all to avoid unnecessary API calls
+    const hasCookies = document.cookie.length > 0;
+    
+    if (hasCookies) {
+      checkAuth()
+        .catch(() => {
+          // If auth check fails, user is not authenticated
+          setUser(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      // No cookies, skip auth check
       setLoading(false);
     }
   }, []);
 
-  // Save user to localStorage when user changes
+  // Listen for auth expiration events from API client (immediate response to 401)
   useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem(KEY, JSON.stringify(user));
-      } else {
-        localStorage.removeItem(KEY);
+    const handleAuthExpired = () => {
+      console.log('Token expired, logging out...');
+      setUser(null);
+      
+      // Redirect to auth page if not already there
+      if (window.location.pathname !== '/auth') {
+        window.location.href = '/auth?expired=true';
       }
-    } catch (error) {
-      console.error('Error saving user to localStorage:', error);
-    }
-  }, [user]);
+    };
 
-  // Check authentication status on mount
-  useEffect(() => {
-    if (user) {
-      checkAuth().catch(() => {
-        // If auth check fails, clear user data
-        setUser(null);
-      });
-    }
+    window.addEventListener('auth:expired', handleAuthExpired);
+    
+    return () => {
+      window.removeEventListener('auth:expired', handleAuthExpired);
+    };
   }, []);
 
   async function login(email: string, password: string): Promise<UserProfile | null> {

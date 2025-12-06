@@ -3,12 +3,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth, ROLES } from "@/state/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function AuthPage() {
-  const { login, register, loginWithGoogle, sendPasswordResetEmail, loading, user } = useAuth();
+  const { login, register, loginWithGoogle, sendPasswordResetEmail, checkAuth, loading, user } = useAuth();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [name, setName] = useState("");
@@ -18,6 +18,40 @@ export default function AuthPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Show expired session message or Google login error/success
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+    
+    const error = searchParams.get('error');
+    if (error) {
+      toast.error(decodeURIComponent(error));
+    }
+
+    // Handle Google OAuth success
+    const googleSuccess = searchParams.get('google');
+    if (googleSuccess === 'success') {
+      // Wait a bit for cookie to be set, then check auth and redirect
+      setTimeout(async () => {
+        try {
+          await checkAuth();
+          toast.success('Đăng nhập Google thành công!');
+          
+          // Redirect based on user role
+          if (user?.roleId === ROLES.ADMIN) {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
+        } catch (error) {
+          toast.error('Đăng nhập thất bại. Vui lòng thử lại.');
+        }
+      }, 500); // Wait 500ms for cookie to be set
+    }
+  }, [searchParams]);
 
   const handleLogin = async () => {
     if (!loginEmail || !loginPw) {
@@ -130,14 +164,14 @@ export default function AuthPage() {
               >
                 {loading || isLoading ? "Đang xử lý..." : "Đăng nhập"}
               </Button>
-              <Button 
+              {/* <Button 
                 variant="secondary" 
                 className="w-full" 
                 onClick={handleGoogleLogin}
                 disabled={loading || isLoading}
               >
                 Đăng nhập bằng Google
-              </Button>
+              </Button> */}
             </div>
           </TabsContent>
           <TabsContent value="register" className="mt-4">

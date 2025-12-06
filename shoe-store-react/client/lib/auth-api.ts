@@ -39,9 +39,9 @@ export class AuthApi {
     return apiClient.post<null>('/auth/reset-password', data);
   }
 
-  // Check if user is authenticated (by trying to access a protected route)
+  // Check if user is authenticated (get current user from cookie)
   async checkAuth(): Promise<ApiResponse<User>> {
-    return apiClient.get<User>('/users');
+    return apiClient.get<User>('/auth/me');
   }
 }
 

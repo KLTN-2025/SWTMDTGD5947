@@ -160,14 +160,17 @@ export function useUpdateOrderStatus() {
       }
     },
     onError: (error: any) => {
-      const errorData = error?.response?.data;
-      if (errorData?.msgCode === 'SAME_STATUS') {
-        toast.warning(errorData.message);
+      // Error message is already parsed by ApiError
+      const msgCode = error?.msgCode || error?.response?.msgCode;
+      const message = error?.message || error?.response?.message || 'Có lỗi xảy ra khi cập nhật trạng thái';
+      
+      if (msgCode === 'SAME_STATUS') {
+        toast.warning(message);
         // Force refresh data
         queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
         queryClient.invalidateQueries({ queryKey: ['admin-order'] });
       } else {
-        toast.error(errorData?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
+        toast.error(message);
       }
     },
   });

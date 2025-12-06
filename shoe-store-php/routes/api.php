@@ -28,6 +28,7 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
     Route::post('/register', [AuthController::class, 'register']);
+    Route::get('/me', [AuthController::class, 'me'])->middleware('auth');
     Route::get('/google', [AuthController::class, 'google'])->middleware('web');
     Route::get('/google/callback', [AuthController::class, 'googleCallBack'])->middleware('web');
     Route::post('/send-email-reset-pass', [AuthController::class, 'sendPasswordResetEmail']);

@@ -44,6 +44,29 @@ class AuthController extends Controller
         return $this->authService->register($request);
     }
 
+    public function me(Request $request)
+    {
+        // Middleware 'auth' đã push user vào request
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json([
+                'code' => HttpCode::UNAUTHORIZED,
+                'status' => false,
+                'msgCode' => MsgCode::UNAUTHORIZED,
+                'message' => 'Chưa đăng nhập',
+            ], HttpCode::UNAUTHORIZED);
+        }
+
+        return response()->json([
+            'code' => HttpCode::SUCCESS,
+            'status' => true,
+            'msgCode' => MsgCode::SUCCESS,
+            'message' => 'Lấy thông tin người dùng thành công',
+            'data' => $user,
+        ]);
+    }
+
     public function google () {
        return Socialite::driver('google')->stateless()->redirect();
     }
@@ -51,12 +74,26 @@ class AuthController extends Controller
     public function googleCallBack() {
         $googleUser = Socialite::driver('google')->stateless()->user();
         $result = $this->authService->googleCallBack($googleUser->user);
+        
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5001');
+        
         if (isset($result['cookie'])) {
             $cookie = $result['cookie'];
-            unset($result['cookie']);
-            return response()->json($result)->cookie($cookie);
+            
+            // Check if login was successful
+            if ($result['status'] === true) {
+                // Redirect to frontend auth callback page with success flag
+                // This gives time for cookie to be set before checkAuth is called
+                return redirect($frontendUrl . '/auth?google=success')
+                    ->cookie($cookie);
+            } else {
+                // Redirect to auth page with error
+                return redirect($frontendUrl . '/auth?error=' . urlencode($result['message']));
+            }
         }
-        return response()->json($result);
+        
+        // Fallback: redirect with error
+        return redirect($frontendUrl . '/auth?error=' . urlencode('Đăng nhập thất bại'));
     }
 
     public function sendPasswordResetEmail(Request $request) {

@@ -50,7 +50,16 @@ class ApiClient {
 
       // Handle non-200 responses that still return JSON
       if (!response.ok || !data.status) {
-        throw new ApiError(data);
+        // Check if error has nested response structure from BE
+        const errorData = data.response || data;
+        
+        // Handle token expiration (401 Unauthorized)
+        if (response.status === 401 || errorData.msgCode === 'UNAUTHORIZED') {
+          // Dispatch custom event for auth expiration
+          window.dispatchEvent(new CustomEvent('auth:expired'));
+        }
+        
+        throw new ApiError(errorData, data);
       }
 
       return data;
@@ -128,7 +137,9 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok || !data.status) {
-        throw new ApiError(data);
+        // Check if error has nested response structure from BE
+        const errorData = data.response || data;
+        throw new ApiError(errorData, data);
       }
 
       return data;
@@ -164,7 +175,9 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok || !data.status) {
-        throw new ApiError(data);
+        // Check if error has nested response structure from BE
+        const errorData = data.response || data;
+        throw new ApiError(errorData, data);
       }
 
       return data;
@@ -190,14 +203,18 @@ class ApiError extends Error {
   public msgCode: string;
   public apiMessage: string | Record<string, string[]>;
   public errorData: any;
+  public fullResponse: any;
 
-  constructor(errorData: {
-    code: number;
-    status: false;
-    msgCode: string;
-    message: string | Record<string, string[]>;
-    errors?: string[];
-  }) {
+  constructor(
+    errorData: {
+      code: number;
+      status: false;
+      msgCode: string;
+      message: string | Record<string, string[]>;
+      errors?: string[];
+    },
+    fullResponse?: any
+  ) {
     // Use the actual API message or first validation error
     const displayMessage = typeof errorData.message === 'string' 
       ? errorData.message 
@@ -210,6 +227,7 @@ class ApiError extends Error {
     this.msgCode = errorData.msgCode;
     this.apiMessage = errorData.message;
     this.errorData = errorData;
+    this.fullResponse = fullResponse || errorData;
   }
 
   // Helper to get validation errors

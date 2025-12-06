@@ -90,7 +90,6 @@ class AuthService
         ]
       ];
     }
-
     $authProvider = AuthProvider::where('userId', $user->id)
       ->where('provider', 'LOCAL')
       ->first();
@@ -118,13 +117,14 @@ class AuthService
     $token = JWTAuth::fromUser($user);
 
     $isProduction = config('app.env') === 'production';
+    $domain = config('session.domain', 'localhost'); // Use session domain config
     
     $cookie = cookie(
       'token',               // name
       $token,                // value
-      config('jwt.ttl'),     // minutes (from JWT config)
+      (int) config('jwt.ttl'),     // minutes (from JWT config) - cast to int
       '/',                   // path
-      null,                  // domain (null = current domain)
+      $domain,               // domain - use configured domain for cross-port access
       $isProduction,         // secure (true for production HTTPS)
       true,                  // httpOnly (prevent XSS)
       false,                 // raw
@@ -320,15 +320,15 @@ class AuthService
           'message' => 'Đăng nhập thành công',
           'data' => [
             'user' => $result,
-            'access_token' => $result['token'],
+            'access_token' => $tokenData['token'],
           ],
-          'cookie' => $result['cookie']
+          'cookie' => $tokenData['cookie']
         ];
       } catch (Exception $e) {
         Log::error($e);
         return [
           'code' => HttpCode::SERVER_ERROR,
-          'status' => true,
+          'status' => false,
           'msgCode' => MsgCode::SERVER_ERROR,
           'message' => 'Đăng nhập thất bại'
         ];
