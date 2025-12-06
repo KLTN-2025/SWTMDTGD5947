@@ -105,7 +105,6 @@ class DatabaseSeeder extends Seeder
     private function seedRoles(): void
     {
         $roles = [
-            ['name' => 'SUPER_ADMIN'],
             ['name' => 'ADMIN'],
             ['name' => 'USER'],
             ['name' => 'MODERATOR'],

@@ -76,7 +76,7 @@ class UserService
         $authProvider = AuthProvider::where('userId', $user->id)
             ->where('provider', 'LOCAL')
             ->first();
-        
+
         $userData = $user->toArray();
         $userData['hasPassword'] = $authProvider ? true : false;
         $userData['provider'] = $authProvider ? $authProvider->provider : null;
@@ -191,18 +191,15 @@ class UserService
 
         // Check if trying to delete an admin
         if ($userToDelete->role && $userToDelete->role->name === Constants::ADMIN) {
-            // Only SUPER_ADMIN can delete admin
-            if (!$currentUser->role || $currentUser->role->name !== Constants::SUPER_ADMIN) {
-                return [
-                    'isDeleted' => false,
-                    'response' => [
-                        'code' => HttpCode::FORBIDDEN,
-                        'status' => false,
-                        'msgCode' => MsgCode::FORBIDDEN,
-                        'message' => 'Chỉ SUPER ADMIN mới được phép xóa admin',
-                    ]
-                ];
-            }
+            return [
+                'isDeleted' => false,
+                'response' => [
+                    'code' => HttpCode::FORBIDDEN,
+                    'status' => false,
+                    'msgCode' => MsgCode::FORBIDDEN,
+                    'message' => 'Không tự ý khoá ADMIN',
+                ]
+            ];
         }
 
         $deleteResult = $this->performDeleteUser($userToDelete);
@@ -685,10 +682,10 @@ class UserService
     {
         // Tạo tên file unique
         $fileName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-        
+
         // Lưu file vào thư mục public/users
         $image->move(public_path('users'), $fileName);
-        
+
         // Trả về đường dẫn
         return 'users/' . $fileName;
     }

@@ -392,7 +392,7 @@ class AuthService
         'purpose' => 'password_reset'
       ])->fromUser($user);
       $resetLink = config('app.frontend_url') . "/reset-password?token=" . $token;
-      Mail::to($user->email)->queue(new ResetPassMail($user, $resetLink));
+      Mail::to($user->email)->send(new ResetPassMail($user, $resetLink));
 
       return [
         'code' => HttpCode::SUCCESS,

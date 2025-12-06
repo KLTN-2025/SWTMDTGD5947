@@ -587,7 +587,7 @@ class CheckoutService
             }
 
             foreach ($admins as $admin) {
-                Mail::to($admin->email)->queue(new AdminOrderPlacedMail($order));
+                Mail::to($admin->email)->send(new AdminOrderPlacedMail($order));
             }
         } catch (Exception $exception) {
             Log::error('Notify admins about new order failed: ' . $exception->getMessage());

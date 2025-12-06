@@ -46,12 +46,12 @@ class AdminMiddleware
                 ], HttpCode::UNAUTHORIZED);
             }
 
-            if (!$user->role || !in_array($user->role->name, [Constants::ADMIN, Constants::SUPER_ADMIN])) {
+            if (!$user->role || !in_array($user->role->name, [Constants::ADMIN])) {
                 return response()->json([
                     'code' => HttpCode::FORBIDDEN,
                     'status' => false,
                     'msgCode' => MsgCode::FORBIDDEN,
-                    'message' => 'Bạn không có quyền truy cập. Chỉ ADMIN hoặc SUPER ADMIN mới được phép.'
+                    'message' => 'Bạn không có quyền truy cập. Chỉ ADMIN'
                 ], HttpCode::FORBIDDEN);
             }
 

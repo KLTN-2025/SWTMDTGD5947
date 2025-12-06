@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { productApi } from "@/lib/product-api";
+import { categoryApi } from "@/lib/category-api";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Link, useNavigate } from "react-router-dom";
 import { apiClient } from "@/lib/api-client";
@@ -22,15 +23,18 @@ import {
   Users,
   Package,
   ShoppingCart,
-  Eye,
   Percent,
   Flame,
   Footprints,
   Briefcase,
-  Mountain
+  Mountain,
+  Loader2
 } from "lucide-react";
 
 export default function Index() {
+  const navigate = useNavigate();
+
+  // Fetch featured products (8 sản phẩm mới nhất)
   const { data: featuredData, isLoading: featuredLoading } = useQuery({
     queryKey: ['featured-products'],
     queryFn: async () => {
@@ -43,6 +47,7 @@ export default function Index() {
     }
   });
 
+  // Fetch new products (6 sản phẩm mới nhất)
   const { data: newData, isLoading: newLoading } = useQuery({
     queryKey: ['new-products'],
     queryFn: async () => {
@@ -55,20 +60,54 @@ export default function Index() {
     }
   });
 
-  // Statistics API
-  const { data: statsData } = useQuery({
+  // Fetch categories (dữ liệu thực tế)
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await categoryApi.getCategories();
+      // API trả về data.categories, không phải data trực tiếp
+      return response.data?.categories || [];
+    }
+  });
+
+  // Fetch statistics từ reports API
+  const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['homepage-stats'],
     queryFn: async () => {
-      const response = await apiClient.get('/products/stats');
-      return response.data;
+      try {
+        const response = await apiClient.get('/admin/reports/overview');
+        return response.data;
+      } catch (error) {
+        // Fallback nếu không có quyền admin
+        return null;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false
   });
 
   const featuredProducts = featuredData?.products || [];
   const newProducts = newData?.products || [];
-  const stats = (statsData as any)?.data || {};
-  const navigate = useNavigate();
+  const categories = categoriesData || [];
+  const stats = statsData?.data || {};
+
+  // Helper function để lấy icon và gradient cho category
+  const getCategoryStyle = (name: string, index: number) => {
+    const styles = [
+      { icon: Footprints, gradient: "from-blue-500 to-cyan-500", bg: "from-blue-50 to-cyan-50", dark: "dark:from-blue-950/20 dark:to-cyan-950/20" },
+      { icon: Zap, gradient: "from-green-500 to-emerald-500", bg: "from-green-50 to-emerald-50", dark: "dark:from-green-950/20 dark:to-emerald-950/20" },
+      { icon: Briefcase, gradient: "from-purple-500 to-violet-500", bg: "from-purple-50 to-violet-50", dark: "dark:from-purple-950/20 dark:to-violet-950/20" },
+      { icon: Mountain, gradient: "from-orange-500 to-red-500", bg: "from-orange-50 to-red-50", dark: "dark:from-orange-950/20 dark:to-red-950/20" }
+    ];
+    
+    const nameLower = name.toLowerCase();
+    if (nameLower.includes('sneaker') || nameLower.includes('giày')) return styles[0];
+    if (nameLower.includes('thể thao') || nameLower.includes('sport') || nameLower.includes('running')) return styles[1];
+    if (nameLower.includes('công sở') || nameLower.includes('office') || nameLower.includes('formal')) return styles[2];
+    if (nameLower.includes('boot') || nameLower.includes('cao cổ') || nameLower.includes('outdoor')) return styles[3];
+    
+    return styles[index % styles.length];
+  };
 
   return (
     <Layout>
@@ -139,10 +178,14 @@ export default function Index() {
             </div>
           </div>
           <div className="relative">
-            <img src="https://images.unsplash.com/photo-1542293787938-c9e299b88054?q=80&w=1600&auto=format&fit=crop" alt="Hero sneaker" className="rounded-3xl shadow-2xl" />
+            <img 
+              src="https://images.unsplash.com/photo-1542293787938-c9e299b88054?q=80&w=1600&auto=format&fit=crop" 
+              alt="Hero sneaker" 
+              className="rounded-3xl shadow-2xl" 
+            />
             <div className="absolute -bottom-6 -left-6 bg-background/80 backdrop-blur border rounded-2xl p-4 shadow-xl">
               <div className="text-xs text-muted-foreground">Bộ sưu tập mới</div>
-              <div className="font-semibold">Summer 2025</div>
+              <div className="font-semibold">Winter 2024</div>
             </div>
           </div>
         </div>
@@ -155,40 +198,64 @@ export default function Index() {
             <div className="flex items-center justify-center w-12 h-12 bg-blue-500/10 rounded-xl mx-auto mb-3">
               <Package className="w-6 h-6 text-blue-600" />
             </div>
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-              {stats.totalProducts || '100+'}
-            </div>
-            <div className="text-sm text-blue-600 dark:text-blue-300">Sản phẩm</div>
+            {statsLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                  {stats.totalProducts || featuredData?.pagination?.total || featuredProducts.length || '0'}
+                </div>
+                <div className="text-sm text-blue-600 dark:text-blue-300">Sản phẩm</div>
+              </>
+            )}
           </div>
           
           <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 rounded-2xl p-6 text-center border border-green-200/50">
             <div className="flex items-center justify-center w-12 h-12 bg-green-500/10 rounded-xl mx-auto mb-3">
               <Users className="w-6 h-6 text-green-600" />
             </div>
-            <div className="text-2xl font-bold text-green-900 dark:text-green-100">
-              {stats.totalCustomers || '1K+'}
-            </div>
-            <div className="text-sm text-green-600 dark:text-green-300">Khách hàng</div>
+            {statsLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-green-600" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-900 dark:text-green-100">
+                  {stats.totalCustomers || stats.totalUsers || '20+'}
+                </div>
+                <div className="text-sm text-green-600 dark:text-green-300">Khách hàng</div>
+              </>
+            )}
           </div>
           
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 rounded-2xl p-6 text-center border border-purple-200/50">
             <div className="flex items-center justify-center w-12 h-12 bg-purple-500/10 rounded-xl mx-auto mb-3">
               <ShoppingCart className="w-6 h-6 text-purple-600" />
             </div>
-            <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-              {stats.totalOrders || '500+'}
-            </div>
-            <div className="text-sm text-purple-600 dark:text-purple-300">Đơn hàng</div>
+            {statsLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-purple-600" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                  {stats.totalOrders || '30+'}
+                </div>
+                <div className="text-sm text-purple-600 dark:text-purple-300">Đơn hàng</div>
+              </>
+            )}
           </div>
           
           <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/20 dark:to-orange-900/20 rounded-2xl p-6 text-center border border-orange-200/50">
             <div className="flex items-center justify-center w-12 h-12 bg-orange-500/10 rounded-xl mx-auto mb-3">
               <Star className="w-6 h-6 text-orange-600" />
             </div>
-            <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-              {stats.averageRating || '4.8'}
-            </div>
-            <div className="text-sm text-orange-600 dark:text-orange-300">Đánh giá</div>
+            {statsLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-orange-600" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+                  {stats.averageRating || '46'}
+                </div>
+                <div className="text-sm text-orange-600 dark:text-orange-300">Đánh giá</div>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -202,7 +269,7 @@ export default function Index() {
               <Badge variant="outline">Trending</Badge>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold">Sản phẩm nổi bật</h2>
-            <p className="text-muted-foreground">Hình ảnh và dữ liệu được cập nhật trực tiếp.</p>
+            <p className="text-muted-foreground">Dữ liệu được cập nhật trực tiếp từ hệ thống.</p>
           </div>
           <Link 
             to="/products" 
@@ -222,11 +289,15 @@ export default function Index() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : featuredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Chưa có sản phẩm nào. Vui lòng thêm sản phẩm từ trang quản trị.
           </div>
         )}
       </section>
@@ -258,7 +329,7 @@ export default function Index() {
               <Button 
                 size="lg" 
                 variant="secondary"
-                onClick={() => navigate("/products?sale=true")}
+                onClick={() => navigate("/products")}
                 className="bg-white text-red-600 hover:bg-white/90 font-semibold"
               >
                 <Percent className="w-4 h-4 mr-2" />
@@ -313,56 +384,41 @@ export default function Index() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : newProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {newProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Chưa có sản phẩm mới.
+          </div>
         )}
       </section>
 
-      {/* Categories */}
+      {/* Categories - Dữ liệu thực tế từ API */}
       <section className="container py-12">
         <div className="flex items-center gap-3 mb-6">
           <Award className="w-6 h-6 text-primary" />
           <h2 className="text-2xl md:text-3xl font-bold">Danh mục sản phẩm</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(() => {
-            // Helper function để lấy icon và gradient cho category
-            const getCategoryStyle = (name: string, index: number) => {
-              const styles = [
-                { icon: Footprints, gradient: "from-blue-500 to-cyan-500", bg: "from-blue-50 to-cyan-50", dark: "dark:from-blue-950/20 dark:to-cyan-950/20" },
-                { icon: Zap, gradient: "from-green-500 to-emerald-500", bg: "from-green-50 to-emerald-50", dark: "dark:from-green-950/20 dark:to-emerald-950/20" },
-                { icon: Briefcase, gradient: "from-purple-500 to-violet-500", bg: "from-purple-50 to-violet-50", dark: "dark:from-purple-950/20 dark:to-violet-950/20" },
-                { icon: Mountain, gradient: "from-orange-500 to-red-500", bg: "from-orange-50 to-red-50", dark: "dark:from-orange-950/20 dark:to-red-950/20" }
-              ];
-              
-              // Tìm style dựa trên tên hoặc sử dụng index
-              if (name.toLowerCase().includes('sneaker') || name.toLowerCase().includes('giày')) return styles[0];
-              if (name.toLowerCase().includes('thể thao') || name.toLowerCase().includes('sport')) return styles[1];
-              if (name.toLowerCase().includes('công sở') || name.toLowerCase().includes('office')) return styles[2];
-              if (name.toLowerCase().includes('boot') || name.toLowerCase().includes('cao cổ')) return styles[3];
-              
-              return styles[index % styles.length];
-            };
-
-            const displayCategories = [
-              {id: 1, name: "Sneaker", slug: "sneaker"},
-              {id: 2, name: "Thể thao", slug: "the-thao"},
-              {id: 3, name: "Công sở", slug: "cong-so"},
-              {id: 4, name: "Boot", slug: "boot"}
-            ];
-
-            return displayCategories.map((c, index) => {
-              const style = getCategoryStyle(c.name, index);
+        {categoriesLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="aspect-square bg-muted animate-pulse rounded-2xl" />
+            ))}
+          </div>
+        ) : categories.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categories.slice(0, 8).map((category, index) => {
+              const style = getCategoryStyle(category.name, index);
               const IconComponent = style.icon;
               
               return (
                 <Link 
-                  key={c.id || c.slug} 
-                  to={`/products?category=${encodeURIComponent(c.slug || c.name)}`} 
+                  key={category.id} 
+                  to={`/products?category=${category.id}`} 
                   className={`group relative rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-gradient-to-br ${style.bg} ${style.dark} border border-white/20`}
                 >
                   <div className="flex flex-col items-center text-center">
@@ -370,8 +426,13 @@ export default function Index() {
                       <IconComponent className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
-                      {c.name}
+                      {category.name}
                     </h3>
+                    {category.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                        {category.description}
+                      </p>
+                    )}
                     <div className="flex items-center gap-1 text-sm text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       Khám phá ngay
                       <ArrowRight className="w-3 h-3" />
@@ -384,9 +445,13 @@ export default function Index() {
                   </div>
                 </Link>
               );
-            });
-          })()}
-        </div>
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            Chưa có danh mục nào.
+          </div>
+        )}
       </section>
 
       {/* SEO sections */}

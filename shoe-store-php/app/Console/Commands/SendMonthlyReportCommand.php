@@ -115,7 +115,7 @@ class SendMonthlyReportCommand extends Command
             $sentCount = 0;
             foreach ($admins as $admin) {
                 try {
-                    Mail::to($admin->email)->queue(
+                    Mail::to($admin->email)->send(
                         new MonthlyReportMail(
                             $reportData,
                             $monthName,
