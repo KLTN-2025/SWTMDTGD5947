@@ -178,37 +178,37 @@ class AdminOrderController extends Controller
             // Transform order items
             $items = $order->items->map(function ($item) {
                 $product = $item->productVariant->product;
-                $mainImage = $product->images->first();
+                $mainImage = $product?->images?->first() ?? null;
                 
                 return [
-                    'id' => $item->id,
+                    'id' => $item?->id,
                     'quantity' => $item->quantity,
                     'itemTotal' => $item->quantity * $item->productVariant->price,
                     'mainImage' => $mainImage ? url($mainImage->url) : null,
                     'colorId' => $item->colorId,
                     'color' => $item->color ? [
-                        'id' => $item->color->id,
+                        'id' => $item->color?->id,
                         'name' => $item->color->name,
                         'hexCode' => $item->color->hexCode,
                     ] : null,
                     'productVariant' => [
-                        'id' => $item->productVariant->id,
+                        'id' => $item->productVariant?->id,
                         'price' => $item->productVariant->price,
                         'product' => [
-                            'id' => $product->id,
-                            'name' => $product->name,
-                            'skuId' => $product->skuId,
-                            'basePrice' => $product->basePrice,
-                            'colors' => $product->colors->map(function ($color) {
+                            'id' => $product?->id,
+                            'name' => $product?->name,
+                            'skuId' => $product?->skuId,
+                            'basePrice' => $product?->basePrice,
+                            'colors' => $product?->colors->map(function ($color) {
                                 return [
-                                    'id' => $color->id,
-                                    'name' => $color->name,
-                                    'hexCode' => $color->hexCode,
+                                    'id' => $color?->id,
+                                    'name' => $color?->name,
+                                    'hexCode' => $color?->hexCode,
                                 ];
                             }),
                         ],
                         'size' => [
-                            'id' => $item->productVariant->size->id,
+                            'id' => $item->productVariant->size?->id,
                             'nameSize' => $item->productVariant->size->nameSize,
                         ]
                     ]
@@ -216,7 +216,7 @@ class AdminOrderController extends Controller
             });
 
             $transformedOrder = [
-                'id' => $order->id,
+                'id' => $order?->id,
                 'customer' => [
                     'id' => $order->user->id,
                     'name' => $order->user->name,

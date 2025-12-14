@@ -94,7 +94,6 @@ class OrderService
         if (!$orderResult['isFound']) {
             return $orderResult['response'];
         }
-
         $order = $orderResult['order'];
         
         // Thêm thông tin chi tiết
@@ -113,7 +112,7 @@ class OrderService
         
         // Thêm thông tin chi tiết cho items
         $order->items->each(function ($item) {
-            $item->mainImage = $item->productVariant->product->images->first()?->fullUrl ?? null;
+            $item->mainImage = $item->productVariant?->product?->images?->first()?->fullUrl ?? null;
             $item->itemTotal = $item->quantity * $item->amount / $item->quantity; // amount là total của item
         });
 
