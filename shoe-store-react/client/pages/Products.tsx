@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useProductSearch } from "@/hooks/useProducts";
-import type { Product, ProductSearchParams } from "@/lib/api-types";
+import type { ProductSearchParams } from "@/lib/api-types";
 import { ProductCard } from "@/components/product/ProductCard";
 import { Layout } from "@/components/layout/Layout";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { productApi } from "@/lib/product-api";
 import { categoryApi } from "@/lib/category-api";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 // These would ideally come from your categories API
 const STATUSES = [
@@ -20,10 +20,18 @@ const STATUSES = [
   { value: "PRE_SALE", label: "Đặt trước" }
 ];
 
+interface Category {
+  id: number;
+  name: string;
+  parentId: number | null;
+  children?: Category[];
+}
+
 export default function ProductsPage() {
   const [sp, setSp] = useSearchParams();
   const { products, pagination, loading, error, searchProducts } = useProductSearch();
   const [searchInput, setSearchInput] = useState(sp.get("search") || "");
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
 
   // Load categories for filter
   const { data: categoriesData } = useQuery({
@@ -37,6 +45,47 @@ export default function ProductsPage() {
   const categories = Array.isArray(categoriesData) 
     ? categoriesData 
     : ((categoriesData as any)?.categories || []);
+
+  // Organize categories into parent-child structure
+  const organizedCategories = useMemo(() => {
+    const parentCategories: Category[] = [];
+    const categoryMap = new Map<number, Category>();
+
+    // First pass: create all category objects
+    categories.forEach((cat: Category) => {
+      categoryMap.set(cat.id, { ...cat, children: [] });
+    });
+
+    // Second pass: organize into parent-child structure
+    categories.forEach((cat: Category) => {
+      const category = categoryMap.get(cat.id);
+      if (!category) return;
+
+      if (cat.parentId === null) {
+        parentCategories.push(category);
+      } else {
+        const parent = categoryMap.get(cat.parentId);
+        if (parent) {
+          parent.children = parent.children || [];
+          parent.children.push(category);
+        }
+      }
+    });
+
+    return parentCategories;
+  }, [categories]);
+
+  const toggleCategory = (categoryId: number) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
 
   const searchParams: ProductSearchParams = useMemo(() => ({
     keyword: sp.get("search") || undefined,
@@ -72,7 +121,7 @@ export default function ProductsPage() {
   };
 
   // Get selected category for display
-  const selectedCategory = categories.find(cat => cat.id === searchParams.category_id);
+  const selectedCategory = categories.find((cat: Category) => cat.id === searchParams.category_id);
 
   return (
     <Layout>
@@ -117,30 +166,67 @@ export default function ProductsPage() {
             {/* Category Filter */}
             <div>
               <h3 className="font-semibold mb-3">Danh mục</h3>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Button 
-                  variant={!searchParams.category_id ? "default" : "secondary"} 
+                  variant={!searchParams.category_id ? "default" : "ghost"} 
                   onClick={() => setParam("category_id", undefined)}
                   className="w-full justify-start"
                 >
                   Tất cả danh mục
                 </Button>
-                {categories.map((category) => (
-                  <Button 
-                    key={category.id} 
-                    variant={searchParams.category_id === category.id ? "default" : "secondary"} 
-                    onClick={() => setParam("category_id", searchParams.category_id === category.id ? undefined : category.id)}
-                    className="w-full justify-start"
-                  >
-                    <span className="truncate">
-                      {category.parentId ? `↳ ${category.name}` : category.name}
-                    </span>
-                    {category.parentId && (
-                      <Badge variant="outline" className="ml-auto text-xs">
-                        Con
-                      </Badge>
+                
+                {organizedCategories.map((parentCategory) => (
+                  <div key={parentCategory.id} className="space-y-1">
+                    <div className="flex items-center gap-1">
+                      {parentCategory.children && parentCategory.children.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => toggleCategory(parentCategory.id)}
+                        >
+                          {expandedCategories.has(parentCategory.id) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      <Button 
+                        variant={searchParams.category_id === parentCategory.id ? "default" : "ghost"} 
+                        onClick={() => setParam("category_id", searchParams.category_id === parentCategory.id ? undefined : parentCategory.id)}
+                        className={`flex-1 justify-start ${!parentCategory.children?.length ? 'ml-9' : ''}`}
+                      >
+                        <span className="truncate font-medium">
+                          {parentCategory.name}
+                        </span>
+                        {parentCategory.children && parentCategory.children.length > 0 && (
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            {parentCategory.children.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Child categories */}
+                    {expandedCategories.has(parentCategory.id) && parentCategory.children && parentCategory.children.length > 0 && (
+                      <div className="ml-9 space-y-1 border-l-2 border-muted pl-2">
+                        {parentCategory.children.map((childCategory) => (
+                          <Button 
+                            key={childCategory.id} 
+                            variant={searchParams.category_id === childCategory.id ? "default" : "ghost"} 
+                            onClick={() => setParam("category_id", searchParams.category_id === childCategory.id ? undefined : childCategory.id)}
+                            className="w-full justify-start text-sm"
+                            size="sm"
+                          >
+                            <span className="truncate">
+                              {childCategory.name}
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 ))}
               </div>
             </div>
