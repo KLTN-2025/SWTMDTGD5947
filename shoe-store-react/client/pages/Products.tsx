@@ -120,7 +120,6 @@ export default function ProductsPage() {
     setParam("search", searchInput);
   };
 
-  // Get selected category for display
   const selectedCategory = categories.find((cat: Category) => cat.id === searchParams.category_id);
 
   return (
