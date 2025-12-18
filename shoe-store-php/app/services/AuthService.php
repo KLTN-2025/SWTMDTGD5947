@@ -117,14 +117,16 @@ class AuthService
     $token = JWTAuth::fromUser($user);
 
     $isProduction = config('app.env') === 'production';
-    $domain = config('session.domain', 'localhost'); // Use session domain config
+    // Không set domain cụ thể để cookie hoạt động đúng giữa các port
+    // Browser sẽ tự gắn cookie cho origin hiện tại
+    $domain = $isProduction ? config('session.domain') : null;
     
     $cookie = cookie(
       'token',               // name
       $token,                // value
       (int) config('jwt.ttl'),     // minutes (from JWT config) - cast to int
       '/',                   // path
-      $domain,               // domain - use configured domain for cross-port access
+      $domain,               // domain - null cho dev để browser tự xử lý
       $isProduction,         // secure (true for production HTTPS)
       true,                  // httpOnly (prevent XSS)
       false,                 // raw

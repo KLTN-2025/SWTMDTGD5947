@@ -54,9 +54,14 @@ class ApiClient {
         const errorData = data.response || data;
         
         // Handle token expiration (401 Unauthorized)
+        // Chỉ dispatch event nếu KHÔNG phải là request checkAuth (initial load)
+        // Để tránh redirect về login khi user chưa từng login
         if (response.status === 401 || errorData.msgCode === 'UNAUTHORIZED') {
-          // Dispatch custom event for auth expiration
-          window.dispatchEvent(new CustomEvent('auth:expired'));
+          const isCheckAuthRequest = endpoint === '/auth/me';
+          if (!isCheckAuthRequest) {
+            // Dispatch custom event for auth expiration
+            window.dispatchEvent(new CustomEvent('auth:expired'));
+          }
         }
         
         throw new ApiError(errorData, data);

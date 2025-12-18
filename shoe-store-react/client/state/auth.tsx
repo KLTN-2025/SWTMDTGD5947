@@ -42,23 +42,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check authentication status on mount (get user from cookie via API)
   useEffect(() => {
-    // Only check auth if we might have a token cookie
-    // Check if we have any cookies at all to avoid unnecessary API calls
-    const hasCookies = document.cookie.length > 0;
-    
-    if (hasCookies) {
-      checkAuth()
-        .catch(() => {
-          // If auth check fails, user is not authenticated
-          setUser(null);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      // No cookies, skip auth check
-      setLoading(false);
-    }
+    // Luôn gọi checkAuth khi mount vì httpOnly cookie không hiển thị trong document.cookie
+    // Browser sẽ tự động gửi cookie khi gọi API với credentials: 'include'
+    checkAuth()
+      .catch(() => {
+        // If auth check fails, user is not authenticated
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   // Listen for auth expiration events from API client (immediate response to 401)
