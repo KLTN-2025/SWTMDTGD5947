@@ -63,14 +63,13 @@ class PaymentController extends Controller
         $result = $this->paymentService->confirmPayment($confirmRequest);
         
         // Redirect về frontend với kết quả
-        // MoMo thường không dùng route này (redirect trực tiếp về frontend)
-        // Nhưng giữ lại để fallback, dùng env variable
-        $frontendUrl = env('FRONTEND_URL', env('FRONT_END_URL', 'http://localhost:5001'));
+        // Sử dụng route callback riêng để tránh vấn đề auth
+        $frontendUrl = env('FRONT_END_URL', 'http://localhost:5001');
         
         if ($result['status']) {
-            return redirect($frontendUrl . '/orders/' . $result['data']['order']['id'] . '?payment=success');
+            return redirect($frontendUrl . '/payment/callback?payment=success&orderId=' . $result['data']['order']['id']);
         } else {
-            return redirect($frontendUrl . '/orders?payment=failed');
+            return redirect($frontendUrl . '/payment/callback?payment=failed');
         }
     }
 
@@ -114,8 +113,8 @@ class PaymentController extends Controller
                 'ip' => $request->ip()
             ]);
             
-            $frontendUrl = 'http://localhost:5001';
-            return redirect($frontendUrl . '/orders?payment=failed&error=invalid_signature');
+            $frontendUrl = env('FRONT_END_URL', 'http://localhost:5001');
+            return redirect($frontendUrl . '/payment/callback?payment=failed&error=invalid_signature');
         }
         
         // VNPay: responseCode = '00' => thành công
@@ -131,13 +130,14 @@ class PaymentController extends Controller
         $result = $this->paymentService->confirmPayment($confirmRequest);
         
         // Redirect về frontend với kết quả
-        // Hardcode localhost cho payment redirect
-        $frontendUrl = 'http://localhost:5001';
+        // Sử dụng env variable thay vì hardcode
+        $frontendUrl = env('FRONT_END_URL', 'http://localhost:5001');
         
         if ($result['status']) {
-            return redirect($frontendUrl . '/orders/' . $result['data']['order']['id'] . '?payment=success');
+            // Redirect về trang callback riêng để xử lý, tránh vấn đề auth
+            return redirect($frontendUrl . '/payment/callback?payment=success&orderId=' . $result['data']['order']['id']);
         } else {
-            return redirect($frontendUrl . '/orders?payment=failed');
+            return redirect($frontendUrl . '/payment/callback?payment=failed');
         }
     }
 

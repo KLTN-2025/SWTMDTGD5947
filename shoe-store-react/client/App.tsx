@@ -22,6 +22,7 @@ import { CartProvider } from "./state/cart";
 import { CartApiProvider } from "./state/cart-api";
 import { AuthProvider } from "./state/auth";
 import Cart from "./pages/Cart";
+import PaymentCallback from "./pages/PaymentCallback";
 
 // Admin imports
 import { AdminLayout } from "../admin/components/layout/AdminLayout";
@@ -138,6 +139,7 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/profile" element={<UserProtectedRoute><ProfilePage /></UserProtectedRoute>} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/payment/callback" element={<PaymentCallback />} />
               
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminProtectedRoute><AdminLayout><Dashboard /></AdminLayout></AdminProtectedRoute>} />

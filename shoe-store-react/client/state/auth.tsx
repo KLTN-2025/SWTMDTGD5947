@@ -64,6 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen for auth expiration events from API client (immediate response to 401)
   useEffect(() => {
     const handleAuthExpired = () => {
+      // Không logout nếu đang ở trang payment callback (redirect từ VNPay/MoMo)
+      // Vì cookie có thể chưa được gửi đúng cách sau cross-site redirect
+      const isPaymentCallback = window.location.pathname.startsWith('/payment/callback');
+      if (isPaymentCallback) {
+        console.log('Skipping auth:expired on payment callback page');
+        return;
+      }
+      
       console.log('Token expired, logging out...');
       setUser(null);
       
