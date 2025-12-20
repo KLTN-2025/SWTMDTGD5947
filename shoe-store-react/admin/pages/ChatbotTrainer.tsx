@@ -1,30 +1,36 @@
-import { InputHTMLAttributes, useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, MessageCircle, User, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  Send,
+  RefreshCw,
+  Bot,
+  User,
+  Settings,
+  MessageSquare,
+  Plus,
+} from "lucide-react";
 import {
   chatAssistantApi,
   ChatAssistantMode,
   ChatHistoryEntry,
-  SuggestedProduct,
-  SizeInsights,
-  OrderSummary,
-  OrderDetail,
   ChatSessionSummary,
-  ChatSessionDetail,
 } from "../lib/chat-assistant";
 import { useAdminCategories } from "../lib/use-admin-categories";
 import { useColors } from "../lib/use-colors";
 
 type AdvisorForm = {
-  categories: string;
-  colors: string;
   usage: string;
   budgetMin: string;
   budgetMax: string;
@@ -49,15 +55,9 @@ export default function ChatbotTrainer() {
   const [message, setMessage] = useState("");
   const [chatBoxId, setChatBoxId] = useState<number | null>(null);
   const [history, setHistory] = useState<ChatHistoryEntry[]>([]);
-  const [suggestedProducts, setSuggestedProducts] = useState<SuggestedProduct[]>([]);
-  const [sizeInsights, setSizeInsights] = useState<SizeInsights | null>(null);
-  const [ordersSummary, setOrdersSummary] = useState<OrderSummary[]>([]);
-  const [orderDetail, setOrderDetail] = useState<OrderDetail | null>(null);
   const [detectedOrderCode, setDetectedOrderCode] = useState<string | null>(null);
   const [orderCodeInput, setOrderCodeInput] = useState("");
   const [advisorForm, setAdvisorForm] = useState<AdvisorForm>({
-    categories: "",
-    colors: "",
     usage: "",
     budgetMin: "",
     budgetMax: "",
@@ -71,6 +71,7 @@ export default function ChatbotTrainer() {
   const [isSending, setIsSending] = useState(false);
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const { categories } = useAdminCategories();
@@ -100,21 +101,11 @@ export default function ChatbotTrainer() {
   const parsedPreferences = useMemo(() => {
     if (mode !== "shoe_advisor") return undefined;
     const prefs: any = {};
-    if (selectedCategoryIds.length) {
-      prefs.categoryIds = selectedCategoryIds;
-    }
-    if (selectedColors.length) {
-      prefs.colors = selectedColors;
-    }
-    if (advisorForm.usage.trim()) {
-      prefs.usage = advisorForm.usage.trim();
-    }
-    if (advisorForm.budgetMin) {
-      prefs.budgetMin = Number(advisorForm.budgetMin);
-    }
-    if (advisorForm.budgetMax) {
-      prefs.budgetMax = Number(advisorForm.budgetMax);
-    }
+    if (selectedCategoryIds.length) prefs.categoryIds = selectedCategoryIds;
+    if (selectedColors.length) prefs.colors = selectedColors;
+    if (advisorForm.usage.trim()) prefs.usage = advisorForm.usage.trim();
+    if (advisorForm.budgetMin) prefs.budgetMin = Number(advisorForm.budgetMin);
+    if (advisorForm.budgetMax) prefs.budgetMax = Number(advisorForm.budgetMax);
     return Object.keys(prefs).length ? prefs : undefined;
   }, [mode, advisorForm, selectedCategoryIds, selectedColors]);
 
@@ -130,30 +121,26 @@ export default function ChatbotTrainer() {
 
   const sendMessage = async () => {
     if (!message.trim()) {
-      toast.error("Vui lòng nhập nội dung huấn luyện");
+      toast.error("Vui lòng nhập nội dung");
       return;
     }
 
     const userMessage = message.trim();
-    
-    // Thêm tin nhắn user ngay lập tức để hiển thị
+    const tempId = Date.now();
     const tempUserEntry: ChatHistoryEntry = {
-      id: Date.now(),
+      id: tempId,
       role: "user",
       message: userMessage,
       createdAt: new Date().toISOString(),
     };
-    
+
     setHistory((prev) => [...prev, tempUserEntry]);
     setMessage("");
     setIsSending(true);
-    
-    // Scroll xuống ngay sau khi thêm tin nhắn user
+
     setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 0);
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    }, 50);
 
     try {
       const response = await chatAssistantApi.sendMessage(
@@ -170,24 +157,16 @@ export default function ChatbotTrainer() {
       if (response.data) {
         const data = response.data;
         setChatBoxId(data.chatBoxId);
-        // Thay thế toàn bộ history bằng data từ API (đã bao gồm cả tin nhắn user và assistant)
         setHistory(data.history || []);
-        setSuggestedProducts(data.suggestedProducts || []);
-        setSizeInsights(data.sizeInsights || null);
-        setOrdersSummary(data.ordersSummary || []);
-        setOrderDetail(data.orderDetail || null);
         setDetectedOrderCode(data.detectedOrderCode || null);
         fetchSessions();
         setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 50);
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+        }, 100);
       }
     } catch (error) {
       toast.error(getErrorMessage(error, "Không thể gửi tin nhắn"));
-      // Xóa tin nhắn tạm và restore input
-      setHistory((prev) => prev.filter((entry) => entry.id !== tempUserEntry.id));
+      setHistory((prev) => prev.filter((e) => e.id !== tempId));
       setMessage(userMessage);
     } finally {
       setIsSending(false);
@@ -208,473 +187,389 @@ export default function ChatbotTrainer() {
         const data = response.data;
         setChatBoxId(data.chatBoxId);
         setHistory(data.history || []);
-        setSuggestedProducts([]);
-        setSizeInsights(null);
-        setOrdersSummary([]);
-        setOrderDetail(null);
         setDetectedOrderCode(null);
         setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-          }
-        }, 50);
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+        }, 100);
       }
     } catch (error) {
       toast.error(getErrorMessage(error, "Không thể tải phiên chat"));
     }
   };
 
+  const startNewChat = () => {
+    setChatBoxId(null);
+    setHistory([]);
+    setDetectedOrderCode(null);
+    setMessage("");
+  };
+
   const getErrorMessage = (error: any, fallback: string) => {
-    if (error?.message) return error.message;
-    return fallback;
+    return error?.message || fallback;
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">AI Trainer</p>
-        <h1 className="text-3xl font-bold tracking-tight">Huấn luyện & kiểm thử Chatbot</h1>
-        <p className="text-gray-600 dark:text-gray-400 max-w-3xl">
-          Gửi tình huống thực tế, tinh chỉnh tham số và theo dõi phản hồi theo thời gian thực. Các yêu cầu sẽ
-          được gửi tới API nội bộ{" "}
-          <code className="px-1 py-0.5 rounded bg-gray-100 text-xs dark:bg-gray-800">/admin/chat-box/send</code>.
-        </p>
+    <div className="h-[calc(100vh-120px)] flex gap-4">
+      {/* Sidebar - Sessions */}
+      <div className="w-72 flex-shrink-0 bg-white dark:bg-gray-900 rounded-lg border flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="font-semibold text-sm">Phiên chat</h2>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startNewChat}>
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={fetchSessions}>
+              <RefreshCw className={`h-4 w-4 ${sessionsLoading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {sessions.map((session) => (
+            <button
+              key={session.id}
+              onClick={() => loadSession(session.id)}
+              className={`w-full text-left p-3 rounded-lg text-sm transition-colors ${
+                chatBoxId === session.id
+                  ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium text-xs text-blue-600">{session.modeLabel}</span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {session.totalMessages}
+                </Badge>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-xs truncate">
+                {session.lastMessage || "Chưa có tin nhắn"}
+              </p>
+            </button>
+          ))}
+          {!sessionsLoading && sessions.length === 0 && (
+            <p className="text-center text-gray-400 text-xs py-8">Chưa có phiên nào</p>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[5fr_3fr]">
-        <Card className="min-h-[600px] max-h-[82vh] flex flex-col overflow-hidden">
-          <CardHeader className="border-b flex-shrink-0">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle className="whitespace-nowrap">Khung chat huấn luyện</CardTitle>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Select value={mode} onValueChange={(value: ChatAssistantMode) => setMode(value)}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Chọn chế độ" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Mã đơn hàng (nếu có)"
-                  value={orderCodeInput}
-                  onChange={(e) => setOrderCodeInput(e.target.value)}
-                  className="w-[180px]"
-                />
-              </div>
+      {/* Main Chat Area */}
+      <div className="flex-1 bg-white dark:bg-gray-900 rounded-lg border flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <Bot className="h-5 w-5 text-white" />
             </div>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col overflow-hidden p-4">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-3 py-4">
-              {history.length === 0 && (
-                <div className="flex h-full items-center justify-center text-gray-400 text-sm">
-                  Bắt đầu phiên huấn luyện bằng cách nhập câu hỏi bên dưới.
-                </div>
-              )}
-              {history.map((entry) => (
-                <div 
-                  key={entry.id} 
-                  className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
-                      entry.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : entry.role === "assistant"
-                          ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
-                          : "bg-amber-100 text-amber-900"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words leading-relaxed">{entry.message}</p>
-                    <p
-                      className={`mt-1.5 text-[10px] ${
-                        entry.role === "user" ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
-                      }`}
-                    >
-                      {new Date(entry.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {isSending && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2.5">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Đang suy nghĩ...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div>
+              <h1 className="font-semibold">AI Assistant Trainer</h1>
+              <p className="text-xs text-gray-500">
+                {modeOptions.find((m) => m.value === mode)?.label}
+              </p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={mode} onValueChange={(v: ChatAssistantMode) => setMode(v)}>
+              <SelectTrigger className="w-44 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {modeOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant={showSettings ? "secondary" : "outline"}
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
-            <div className="mt-4 border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-              <Textarea
-                rows={2}
-                placeholder="Nhập câu hỏi... (Enter để gửi, Shift+Enter để xuống dòng)"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isSending}
-              />
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-gray-500">
-                  Chế độ: <strong>{modeOptions.find((m) => m.value === mode)?.label}</strong>
-                </p>
-                <Button onClick={sendMessage} disabled={isSending || !message.trim()} className="w-full sm:w-auto">
-                  {isSending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Đang gửi...
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Gửi tin nhắn
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="p-4 border-b bg-gray-50 dark:bg-gray-800/50 flex-shrink-0 space-y-4">
+            {mode === "auto_answer" && (
+              <p className="text-sm text-gray-500">Chế độ hỏi đáp chung – không cần cấu hình thêm.</p>
+            )}
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Phiên gần đây</CardTitle>
-                <p className="text-sm text-gray-500">Tiếp tục huấn luyện trên các phiên đã tạo.</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={fetchSessions}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Làm mới
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {sessionsLoading && (
-                <div className="flex items-center justify-center py-4 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Đang tải danh sách phiên...
-                </div>
-              )}
-              {!sessionsLoading && sessions.length === 0 && (
-                <p className="text-sm text-gray-500">Chưa có phiên huấn luyện nào.</p>
-              )}
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={`border rounded-lg p-3 flex flex-col gap-1 text-sm ${
-                    chatBoxId === session.id ? "border-blue-500" : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{session.modeLabel}</span>
-                    <Badge variant="outline">{session.totalMessages} tin</Badge>
-                  </div>
-                  <p className="text-gray-600 truncate">{session.lastMessage || "Chưa có tin nhắn"}</p>
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>
-                      {session.lastMessageAt
-                        ? new Date(session.lastMessageAt).toLocaleString("vi-VN")
-                        : "—"}
-                    </span>
-                    <Button variant="secondary" size="sm" onClick={() => loadSession(session.id)}>
-                      Mở
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Cấu hình đầu vào</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {mode === "shoe_advisor" && (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500">Danh mục ưu tiên</label>
-                    <Select
-                      onValueChange={(value) => {
-                        const numeric = Number(value);
-                        if (selectedCategoryIds.includes(numeric)) {
-                          setSelectedCategoryIds((prev) => prev.filter((id) => id !== numeric));
-                        } else {
-                          setSelectedCategoryIds((prev) => [...prev, numeric]);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn danh mục" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={String(cat.id)}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedCategoryIds.map((id) => {
-                        const cat = categories.find((c) => c.id === id);
-                        return (
-                          <Badge
-                            key={id}
-                            variant="secondary"
-                            className="cursor-pointer"
-                            onClick={() =>
-                              setSelectedCategoryIds((prev) => prev.filter((item) => item !== id))
-                            }
-                          >
-                            {cat?.name || `ID ${id}`} ×
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500">Màu sắc ưu tiên</label>
-                    <Select
-                      onValueChange={(value) => {
-                        if (selectedColors.includes(value)) {
-                          setSelectedColors((prev) => prev.filter((item) => item !== value));
-                        } else {
-                          setSelectedColors((prev) => [...prev, value]);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn màu sắc" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {colorOptions.map((color) => (
-                          <SelectItem key={color.name} value={color.name}>
-                            {color.name} {color.hexCode ? `(#${color.hexCode})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedColors.map((color) => (
-                        <Badge
-                          key={color}
-                          variant="outline"
-                          className="cursor-pointer"
-                          onClick={() =>
-                            setSelectedColors((prev) => prev.filter((item) => item !== color))
-                          }
-                        >
-                          {color} ×
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <LabeledInput
-                    label="Nhu cầu sử dụng"
-                    placeholder="Đi làm, đi học..."
-                    value={advisorForm.usage}
-                    onChange={(e) => setAdvisorForm({ ...advisorForm, usage: e.target.value })}
+            {mode === "order_support" && (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500">Nhập mã đơn hàng hoặc để AI tự dò từ câu hỏi.</p>
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-20">Mã đơn:</label>
+                  <Input
+                    value={orderCodeInput}
+                    onChange={(e) => setOrderCodeInput(e.target.value)}
+                    placeholder="VD: ORD123"
+                    className="w-48 h-9"
                   />
-                  <div className="grid grid-cols-2 gap-3">
-                    <LabeledInput
-                      label="Ngân sách từ (VND)"
-                      type="number"
-                      value={advisorForm.budgetMin}
-                      onChange={(e) => setAdvisorForm({ ...advisorForm, budgetMin: e.target.value })}
-                    />
-                    <LabeledInput
-                      label="Đến (VND)"
-                      type="number"
-                      value={advisorForm.budgetMax}
-                      onChange={(e) => setAdvisorForm({ ...advisorForm, budgetMax: e.target.value })}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {mode === "size_support" && (
-                <div className="space-y-3">
-                  <LabeledInput
-                    label="Chiều dài bàn chân (cm)"
-                    type="number"
-                    value={sizeForm.footLengthCm}
-                    onChange={(e) => setSizeForm({ ...sizeForm, footLengthCm: e.target.value })}
-                  />
-                  <LabeledInput
-                    label="Chiều rộng bàn chân (cm)"
-                    type="number"
-                    value={sizeForm.footWidthCm}
-                    onChange={(e) => setSizeForm({ ...sizeForm, footWidthCm: e.target.value })}
-                  />
-                  <LabeledInput
-                    label="Size đang mang"
-                    placeholder="EU 41"
-                    value={sizeForm.currentSize}
-                    onChange={(e) => setSizeForm({ ...sizeForm, currentSize: e.target.value })}
-                  />
-                  <LabeledInput
-                    label="Sở thích (ôm chân, thoáng...)"
-                    placeholder="Thích ôm vừa"
-                    value={sizeForm.fitPreference}
-                    onChange={(e) => setSizeForm({ ...sizeForm, fitPreference: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {mode === "order_support" && (
-                <div className="text-sm text-gray-500 space-y-2">
-                  <p>Gợi ý: nhập mã đơn hoặc để AI tự dò từ câu hỏi.</p>
                   {detectedOrderCode && (
                     <Badge variant="outline" className="text-xs">
                       Đã phát hiện: #{detectedOrderCode}
                     </Badge>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {mode === "auto_answer" && (
-                <p className="text-sm text-gray-500">Chế độ hỏi đáp chung – không cần cấu hình thêm.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {suggestedProducts.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Gợi ý sản phẩm</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {suggestedProducts.map((product) => (
-                  <div key={product.skuId} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex items-center gap-3">
-                      {product.mainImage ? (
-                        <img src={product.mainImage} alt={product.name} className="h-12 w-12 rounded-md object-cover" />
-                      ) : (
-                        <div className="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center text-xs text-gray-500">IMG</div>
-                      )}
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-xs text-gray-500">SKU: {product.skuId}</p>
-                      </div>
+            {mode === "shoe_advisor" && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-20">Danh mục:</label>
+                  <Select
+                    onValueChange={(v) => {
+                      const id = Number(v);
+                      setSelectedCategoryIds((prev) =>
+                        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="w-48 h-9">
+                      <SelectValue placeholder="Chọn danh mục..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedCategoryIds.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {selectedCategoryIds.map((id) => (
+                        <Badge
+                          key={id}
+                          variant="secondary"
+                          className="cursor-pointer text-xs"
+                          onClick={() => setSelectedCategoryIds((prev) => prev.filter((x) => x !== id))}
+                        >
+                          {categories.find((c) => c.id === id)?.name} ×
+                        </Badge>
+                      ))}
                     </div>
-                    <p className="text-sm font-semibold text-blue-600">
-                      {product.price?.toLocaleString("vi-VN")} đ
-                    </p>
-                    <div className="text-xs text-gray-500 space-y-1">
-                      {product.colors?.length ? <p>Màu: {product.colors.join(", ")}</p> : null}
-                      {product.sizes?.length ? <p>Size: {product.sizes.join(", ")}</p> : null}
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-20">Màu sắc:</label>
+                  <Select
+                    onValueChange={(v) => {
+                      setSelectedColors((prev) =>
+                        prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="w-48 h-9">
+                      <SelectValue placeholder="Chọn màu sắc..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colorOptions.map((color) => (
+                        <SelectItem key={color.name} value={color.name}>
+                          <div className="flex items-center gap-2">
+                            {color.hexCode && (
+                              <span
+                                className="w-3 h-3 rounded-full border"
+                                style={{ backgroundColor: color.hexCode }}
+                              />
+                            )}
+                            {color.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedColors.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {selectedColors.map((color) => (
+                        <Badge
+                          key={color}
+                          variant="outline"
+                          className="cursor-pointer text-xs"
+                          onClick={() => setSelectedColors((prev) => prev.filter((x) => x !== color))}
+                        >
+                          {color} ×
+                        </Badge>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+                  )}
+                </div>
 
-          {sizeInsights && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Phân tích kích thước</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-gray-600">
-                {sizeInsights.input && (
-                  <div>
-                    <p className="font-semibold">Thông tin cung cấp:</p>
-                    <ul className="list-disc ml-4">
-                      {Object.entries(sizeInsights.input).map(([key, value]) => (
-                        <li key={key}>
-                          {key}: <strong>{String(value ?? "")}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {sizeInsights.history && sizeInsights.history.length > 0 && (
-                  <div>
-                    <p className="font-semibold">Lịch sử mua size:</p>
-                    <ul className="list-disc ml-4">
-                      {sizeInsights.history.map((item, index) => (
-                        <li key={index}>
-                          {item.productName} - size {item.size} ({item.skuId})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {sizeInsights.bestPractices && (
-                  <div>
-                    <p className="font-semibold">Gợi ý:</p>
-                    <ul className="list-disc ml-4">
-                      {sizeInsights.bestPractices.map((practice, index) => (
-                        <li key={index}>{practice}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-20">Nhu cầu:</label>
+                  <Input
+                    value={advisorForm.usage}
+                    onChange={(e) => setAdvisorForm({ ...advisorForm, usage: e.target.value })}
+                    placeholder="Đi làm, đi học, chạy bộ..."
+                    className="w-48 h-9"
+                  />
+                </div>
 
-          {(ordersSummary.length > 0 || orderDetail) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Thông tin đơn hàng</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-gray-600">
-                {ordersSummary.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="font-semibold">Đơn gần đây:</p>
-                    {ordersSummary.map((order) => (
-                      <div key={order.orderId} className="border rounded-md p-2">
-                        <p className="font-medium">#{order.orderId}</p>
-                        <p>Trạng thái: {order.status}</p>
-                        <p>Tổng: {order.amount.toLocaleString("vi-VN")} đ</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {orderDetail && (
-                  <div className="space-y-2">
-                    <p className="font-semibold">Chi tiết đơn #{orderDetail.orderId}</p>
-                    <p>Thanh toán: {orderDetail.paymentStatus}</p>
-                    <p>Địa chỉ: {orderDetail.deliveryAddress || "—"}</p>
-                    {orderDetail.items?.length ? (
-                      <div className="space-y-1">
-                        {orderDetail.items.map((item, index) => (
-                          <p key={index}>
-                            • {item.productName} ({item.skuId}) - size {item.size}, màu {item.color} x{item.quantity}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-20">Ngân sách:</label>
+                  <Input
+                    type="number"
+                    value={advisorForm.budgetMin}
+                    onChange={(e) => setAdvisorForm({ ...advisorForm, budgetMin: e.target.value })}
+                    placeholder="Từ (VND)"
+                    className="w-32 h-9"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <Input
+                    type="number"
+                    value={advisorForm.budgetMax}
+                    onChange={(e) => setAdvisorForm({ ...advisorForm, budgetMax: e.target.value })}
+                    placeholder="Đến (VND)"
+                    className="w-32 h-9"
+                  />
+                </div>
+              </div>
+            )}
+
+            {mode === "size_support" && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-32">Chiều dài bàn chân:</label>
+                  <Input
+                    type="number"
+                    value={sizeForm.footLengthCm}
+                    onChange={(e) => setSizeForm({ ...sizeForm, footLengthCm: e.target.value })}
+                    placeholder="cm"
+                    className="w-24 h-9"
+                  />
+                  <span className="text-xs text-gray-400">cm</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-32">Chiều rộng bàn chân:</label>
+                  <Input
+                    type="number"
+                    value={sizeForm.footWidthCm}
+                    onChange={(e) => setSizeForm({ ...sizeForm, footWidthCm: e.target.value })}
+                    placeholder="cm"
+                    className="w-24 h-9"
+                  />
+                  <span className="text-xs text-gray-400">cm</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-32">Size đang mang:</label>
+                  <Input
+                    value={sizeForm.currentSize}
+                    onChange={(e) => setSizeForm({ ...sizeForm, currentSize: e.target.value })}
+                    placeholder="VD: EU 41, US 8"
+                    className="w-32 h-9"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-gray-500 w-32">Sở thích fit:</label>
+                  <Input
+                    value={sizeForm.fitPreference}
+                    onChange={(e) => setSizeForm({ ...sizeForm, fitPreference: e.target.value })}
+                    placeholder="Ôm chân, thoáng, vừa vặn..."
+                    className="w-48 h-9"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          {history.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+              <MessageSquare className="h-12 w-12 mb-3 opacity-50" />
+              <p className="text-sm">Bắt đầu cuộc trò chuyện</p>
+              <p className="text-xs mt-1">Nhập tin nhắn bên dưới để huấn luyện AI</p>
+            </div>
           )}
+          {history.map((entry) => (
+            <div
+              key={entry.id}
+              className={`flex gap-3 ${entry.role === "user" ? "flex-row-reverse" : ""}`}
+            >
+              <div
+                className={`h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+                  entry.role === "user"
+                    ? "bg-blue-600"
+                    : "bg-gradient-to-br from-purple-500 to-pink-500"
+                }`}
+              >
+                {entry.role === "user" ? (
+                  <User className="h-4 w-4 text-white" />
+                ) : (
+                  <Bot className="h-4 w-4 text-white" />
+                )}
+              </div>
+              <div
+                className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
+                  entry.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap break-words">{entry.message}</p>
+                <p
+                  className={`text-[10px] mt-1 ${
+                    entry.role === "user" ? "text-blue-200" : "text-gray-400"
+                  }`}
+                >
+                  {new Date(entry.createdAt).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+            </div>
+          ))}
+          {isSending && (
+            <div className="flex gap-3">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <Bot className="h-4 w-4 text-white" />
+              </div>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                  <span className="text-sm text-gray-500">Đang trả lời...</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="p-4 border-t flex-shrink-0 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex gap-3">
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Nhập tin nhắn... (Enter để gửi)"
+              disabled={isSending}
+              className="flex-1 min-h-[44px] max-h-32 resize-none"
+              rows={1}
+            />
+            <Button
+              onClick={sendMessage}
+              disabled={isSending || !message.trim()}
+              className="h-11 px-4"
+            >
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-type LabeledInputProps = InputHTMLAttributes<HTMLInputElement> & {
-  label: string;
-};
-
-function LabeledInput({ label, ...props }: LabeledInputProps) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</label>
-      <Input {...props} />
-    </div>
-  );
-}
-
