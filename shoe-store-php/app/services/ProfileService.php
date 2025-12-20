@@ -348,9 +348,9 @@ class ProfileService
 
       if (!Hash::check($request->currentPassword, $authProvider->password)) {
         return [
-          'code' => HttpCode::UNAUTHORIZED,
+          'code' => HttpCode::BAD_REQUEST,
           'status' => false,
-          'msgCode' => MsgCode::UNAUTHORIZED,
+          'msgCode' => MsgCode::BAD_REQUEST,
           'message' => 'Mật khẩu hiện tại không đúng'
         ];
       }
