@@ -118,7 +118,8 @@ class PaymentController extends Controller
         }
         
         // VNPay: responseCode = '00' => thành công
-        $status = $responseCode === '00' ? 'PAID' : 'FAILED';
+        $isPaymentSuccess = $responseCode === '00';
+        $status = $isPaymentSuccess ? 'PAID' : 'FAILED';
         
         // Tạo request object để gọi confirmPayment
         $confirmRequest = new Request([
@@ -133,11 +134,18 @@ class PaymentController extends Controller
         // Sử dụng env variable thay vì hardcode
         $frontendUrl = env('FRONT_END_URL', 'http://localhost:5001');
         
-        if ($result['status']) {
+        // Kiểm tra cả kết quả API và trạng thái thanh toán thực sự
+        if ($result['status'] && $isPaymentSuccess) {
             // Redirect về trang callback riêng để xử lý, tránh vấn đề auth
             return redirect($frontendUrl . '/payment/callback?payment=success&orderId=' . $result['data']['order']['id']);
         } else {
-            return redirect($frontendUrl . '/payment/callback?payment=failed');
+            // Thanh toán thất bại hoặc bị huỷ
+            $orderId = $result['data']['order']['id'] ?? null;
+            $redirectUrl = $frontendUrl . '/payment/callback?payment=failed';
+            if ($orderId) {
+                $redirectUrl .= '&orderId=' . $orderId;
+            }
+            return redirect($redirectUrl);
         }
     }
 
