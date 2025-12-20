@@ -241,16 +241,14 @@ export default function ChatbotTrainer() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[5fr,3fr]">
-        <Card className="h-[82vh] flex flex-col">
-          <CardHeader className="border-b">
+      <div className="grid gap-6 lg:grid-cols-[5fr_3fr]">
+        <Card className="min-h-[600px] max-h-[82vh] flex flex-col overflow-hidden">
+          <CardHeader className="border-b flex-shrink-0">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <CardTitle>Khung chat huấn luyện</CardTitle>
-              </div>
+              <CardTitle className="whitespace-nowrap">Khung chat huấn luyện</CardTitle>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Select value={mode} onValueChange={(value: ChatAssistantMode) => setMode(value)}>
-                  <SelectTrigger className="min-w-[200px]">
+                  <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Chọn chế độ" />
                   </SelectTrigger>
                   <SelectContent>
@@ -265,12 +263,12 @@ export default function ChatbotTrainer() {
                   placeholder="Mã đơn hàng (nếu có)"
                   value={orderCodeInput}
                   onChange={(e) => setOrderCodeInput(e.target.value)}
-                  className="sm:w-48"
+                  className="w-[180px]"
                 />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col overflow-hidden">
+          <CardContent className="flex-1 flex flex-col overflow-hidden p-4">
             <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-3 py-4">
               {history.length === 0 && (
                 <div className="flex h-full items-center justify-center text-gray-400 text-sm">
@@ -314,10 +312,10 @@ export default function ChatbotTrainer() {
               )}
             </div>
 
-            <div className="mt-4 border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+            <div className="mt-4 border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
               <Textarea
-                rows={3}
-                placeholder="Nhập câu hỏi hoặc tình huống huấn luyện... (Enter để gửi, Shift+Enter để xuống dòng)"
+                rows={2}
+                placeholder="Nhập câu hỏi... (Enter để gửi, Shift+Enter để xuống dòng)"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
