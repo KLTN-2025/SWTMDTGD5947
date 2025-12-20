@@ -226,8 +226,12 @@ export default function ProductEdit() {
               <Input 
                 type="number" 
                 placeholder="0" 
+                min="0"
                 value={basePrice || ''} 
-                onChange={e => setBasePrice(Number(e.target.value))} 
+                onChange={e => {
+                  const value = Number(e.target.value);
+                  setBasePrice(value >= 0 ? value : 0);
+                }} 
               />
             </div>
             <div className="space-y-2">
