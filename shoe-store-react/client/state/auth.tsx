@@ -9,6 +9,7 @@ export interface UserProfile {
   userName: string;
   email: string;
   imageUrl?: string;
+  fullImageUrl?: string;
   isActive: boolean;
   roleId: number;
   createdAt: string;

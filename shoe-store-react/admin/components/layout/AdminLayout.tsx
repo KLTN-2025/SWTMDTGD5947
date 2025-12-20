@@ -93,16 +93,16 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
               {/* Profile dropdown */}
               <div className="flex items-center gap-x-2">
-                {user?.imageUrl ? (
-                  <img 
-                    src={user.imageUrl} 
+                {(user?.fullImageUrl || user?.imageUrl) ? (
+                  <img
+                    src={user.fullImageUrl || user.imageUrl}
                     alt={user.name}
                     className="h-8 w-8 rounded-full object-cover border"
                   />
                 ) : (
                   <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                     <span className="text-sm font-medium text-white">
-                      {user?.name?.charAt(0).toUpperCase() || 'A'}
+                      {user?.name?.charAt(0).toUpperCase() || "A"}
                     </span>
                   </div>
                 )}
