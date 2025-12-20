@@ -115,7 +115,6 @@ export default function ProductNew() {
                 <SelectContent>
                   <SelectItem value="IN_STOCK">Còn hàng</SelectItem>
                   <SelectItem value="SOLD_OUT">Hết hàng</SelectItem>
-                  <SelectItem value="PRE_SALE">Đặt trước</SelectItem>
                 </SelectContent>
               </Select>
             </div>

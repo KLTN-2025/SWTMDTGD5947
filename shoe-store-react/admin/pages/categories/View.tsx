@@ -168,8 +168,8 @@ export default function CategoryView() {
                   {categoryProducts.map(p => (
                     <TableRow key={p.id}>
                       <TableCell>
-                        {p.images[0] ? (
-                          <img src={p.images[0].url} alt={p.name} className="h-12 w-12 rounded object-cover" />
+                        {p.images && p.images.length > 0 && p.images[0] ? (
+                          <img src={`http://localhost:8009/${p.images[0].url}`} alt={p.name} className="h-12 w-12 rounded object-cover" />
                         ) : (
                           <div className="h-12 w-12 bg-muted rounded flex items-center justify-center">
                             <Package className="h-6 w-6 text-muted-foreground" />

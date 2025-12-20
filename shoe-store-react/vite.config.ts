@@ -8,8 +8,8 @@ export default defineConfig({
     host: "::",
     port: 5001,
     allowedHosts: [
-      "504cbe621956.ngrok-free.app",
-      "b92a22a3f13d.ngrok-free.app",
+      "https://jeffery-thermotactic-unformidably.ngrok-free.dev",
+      "jeffery-thermotactic-unformidably.ngrok-free.dev",
       ".ngrok-free.app", // Allow all ngrok subdomains
       "localhost",
     ],
