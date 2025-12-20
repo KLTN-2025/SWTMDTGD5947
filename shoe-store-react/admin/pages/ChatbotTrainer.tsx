@@ -134,35 +134,32 @@ export default function ChatbotTrainer() {
       return;
     }
 
+    const userMessage = message.trim();
+    
+    // Thêm tin nhắn user ngay lập tức để hiển thị
     const tempUserEntry: ChatHistoryEntry = {
       id: Date.now(),
       role: "user",
-      message: message.trim(),
+      message: userMessage,
       createdAt: new Date().toISOString(),
     };
-
-    const tempAssistantEntry: ChatHistoryEntry = {
-      id: Date.now() + 1,
-      role: "assistant",
-      message: "Đang suy nghĩ...",
-      createdAt: new Date().toISOString(),
-      meta: { isPlaceholder: true },
-    };
-
-    setHistory((prev) => [...prev, tempUserEntry, tempAssistantEntry]);
+    
+    setHistory((prev) => [...prev, tempUserEntry]);
     setMessage("");
+    setIsSending(true);
+    
+    // Scroll xuống ngay sau khi thêm tin nhắn user
     setTimeout(() => {
       if (scrollRef.current) {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
     }, 0);
 
-    setIsSending(true);
     try {
       const response = await chatAssistantApi.sendMessage(
         {
           mode,
-          message: message.trim(),
+          message: userMessage,
           chatBoxId: chatBoxId ?? undefined,
           orderCode: orderCodeInput.trim() || undefined,
           preferences: parsedPreferences,
@@ -171,20 +168,16 @@ export default function ChatbotTrainer() {
         true
       );
       if (response.data) {
-        setHistory((prev) =>
-          prev.filter((entry) => entry.meta?.isPlaceholder !== true)
-        );
-
         const data = response.data;
         setChatBoxId(data.chatBoxId);
-        setHistory((prev) => [...prev, ...(data.history || [])]);
+        // Thay thế toàn bộ history bằng data từ API (đã bao gồm cả tin nhắn user và assistant)
+        setHistory(data.history || []);
         setSuggestedProducts(data.suggestedProducts || []);
         setSizeInsights(data.sizeInsights || null);
         setOrdersSummary(data.ordersSummary || []);
         setOrderDetail(data.orderDetail || null);
         setDetectedOrderCode(data.detectedOrderCode || null);
         fetchSessions();
-        setMessage("");
         setTimeout(() => {
           if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -193,8 +186,18 @@ export default function ChatbotTrainer() {
       }
     } catch (error) {
       toast.error(getErrorMessage(error, "Không thể gửi tin nhắn"));
+      // Xóa tin nhắn tạm và restore input
+      setHistory((prev) => prev.filter((entry) => entry.id !== tempUserEntry.id));
+      setMessage(userMessage);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -268,16 +271,19 @@ export default function ChatbotTrainer() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col overflow-hidden">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-3 py-4">
               {history.length === 0 && (
                 <div className="flex h-full items-center justify-center text-gray-400 text-sm">
                   Bắt đầu phiên huấn luyện bằng cách nhập câu hỏi bên dưới.
                 </div>
               )}
               {history.map((entry) => (
-                <div key={entry.id} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div 
+                  key={entry.id} 
+                  className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}
+                >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow ${
+                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
                       entry.role === "user"
                         ? "bg-blue-600 text-white"
                         : entry.role === "assistant"
@@ -285,10 +291,10 @@ export default function ChatbotTrainer() {
                           : "bg-amber-100 text-amber-900"
                     }`}
                   >
-                    <p className="whitespace-pre-line">{entry.message}</p>
+                    <p className="whitespace-pre-wrap break-words leading-relaxed">{entry.message}</p>
                     <p
-                      className={`mt-2 text-xs ${
-                        entry.role === "user" ? "text-blue-100" : "text-gray-500 dark:text-gray-400"
+                      className={`mt-1.5 text-[10px] ${
+                        entry.role === "user" ? "text-blue-200" : "text-gray-400 dark:text-gray-500"
                       }`}
                     >
                       {new Date(entry.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
@@ -296,20 +302,32 @@ export default function ChatbotTrainer() {
                   </div>
                 </div>
               ))}
+              {isSending && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2.5">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Đang suy nghĩ...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 border rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
               <Textarea
                 rows={3}
-                placeholder="Nhập câu hỏi hoặc tình huống huấn luyện..."
+                placeholder="Nhập câu hỏi hoặc tình huống huấn luyện... (Enter để gửi, Shift+Enter để xuống dòng)"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={isSending}
               />
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-gray-500">
-                  Chú ý: Nội dung sẽ được gửi tới trợ lý với chế độ <strong>{modeOptions.find((m) => m.value === mode)?.label}</strong>.
+                  Chế độ: <strong>{modeOptions.find((m) => m.value === mode)?.label}</strong>
                 </p>
-                <Button onClick={sendMessage} disabled={isSending} className="w-full sm:w-auto">
+                <Button onClick={sendMessage} disabled={isSending || !message.trim()} className="w-full sm:w-auto">
                   {isSending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
