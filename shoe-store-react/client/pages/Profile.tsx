@@ -171,14 +171,12 @@ export default function Profile() {
                 {/* Avatar */}
                 <div className="flex items-center gap-6">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage 
-                      src={imagePreview || getImageUrl(profile.user.imageUrl)} 
-                      alt={profile.user.name}
-                      onError={(e) => {
-                        // Hide broken image, show fallback
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    {(imagePreview || profile.user.imageUrl) && (
+                      <AvatarImage 
+                        src={imagePreview || getImageUrl(profile.user.imageUrl)} 
+                        alt={profile.user.name}
+                      />
+                    )}
                     <AvatarFallback className="text-2xl bg-primary/10">
                       {profile.user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>

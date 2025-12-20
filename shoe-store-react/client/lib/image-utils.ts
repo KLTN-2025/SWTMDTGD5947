@@ -16,6 +16,9 @@ export function getImageUrl(imagePath: string | null | undefined): string | unde
     return imagePath;
   }
   
+  // Ensure path starts with /
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  
   // Build full URL
-  return `${BASE_URL}${imagePath}`;
+  return `${BASE_URL}${normalizedPath}`;
 }
