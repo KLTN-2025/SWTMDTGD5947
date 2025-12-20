@@ -34,9 +34,10 @@ export default function Users() {
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
   
   // Use real API with server-side filtering
-  const { users, loading, deleteUser: apiDeleteUser, searchUsers } = useAdminUsers();
+  const { users, pagination, loading, deleteUser: apiDeleteUser, searchUsers } = useAdminUsers();
   const { roles, loading: rolesLoading } = useRoles();
   
   // Server-side search with debounce
@@ -49,13 +50,22 @@ export default function Users() {
       if (roleFilter !== "all") params.role_id = roleFilter;
       if (statusFilter !== "all") params.is_active = statusFilter;
       
+      // Add pagination
+      params.page = String(page);
+      params.per_page = "10";
+      
       // Call search API with params object
-      console.log('Search params:', params);
       searchUsers(params);
     }, 500); // Debounce 500ms
     
     return () => clearTimeout(timer);
-  }, [q, roleFilter, statusFilter]);
+  }, [q, roleFilter, statusFilter, page]);
+
+  // Reset page when filters change
+  const handleFilterChange = (setter: (value: string) => void, value: string) => {
+    setter(value);
+    setPage(1);
+  };
 
   const remove = async (id: number) => { 
     if (confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
@@ -153,7 +163,7 @@ export default function Users() {
             </div>
 
             {/* Role Filter */}
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select value={roleFilter} onValueChange={(v) => handleFilterChange(setRoleFilter, v)}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Vai trò" />
@@ -169,7 +179,7 @@ export default function Users() {
             </Select>
 
             {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => handleFilterChange(setStatusFilter, v)}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Trạng thái" />
@@ -309,6 +319,50 @@ export default function Users() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination - Luôn hiển thị */}
+        {!loading && (
+          <div className="flex items-center justify-between p-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              {pagination 
+                ? `Hiển thị ${pagination.from || 0} - ${pagination.to || 0} trong tổng số ${pagination.total} người dùng`
+                : `Tổng ${users.length} người dùng`
+              }
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page - 1)}
+                disabled={page <= 1}
+              >
+                Trước
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.max(1, pagination?.last_page || 1) }, (_, i) => i + 1)
+                  .slice(Math.max(0, page - 3), page + 2)
+                  .map((pageNum) => (
+                    <Button
+                      key={pageNum}
+                      variant={page === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page + 1)}
+                disabled={!pagination || page >= pagination.last_page}
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

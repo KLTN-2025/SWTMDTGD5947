@@ -59,7 +59,7 @@ export default function Customers() {
     max_orders: maxOrders ? parseInt(maxOrders) : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
-    per_page: 15,
+    per_page: 10,
     page: page,
   }), [debouncedSearch, isActive, minSpent, maxSpent, minOrders, maxOrders, sortBy, sortOrder, page]);
   
@@ -391,56 +391,47 @@ export default function Customers() {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
-      {pagination && pagination.last_page > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Hiển thị {pagination.from} - {pagination.to} trong tổng số {pagination.total} khách hàng
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(page - 1)}
-              disabled={page <= 1}
-            >
-              Trước
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, pagination.last_page) }, (_, i) => {
-                let pageNum;
-                if (pagination.last_page <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= pagination.last_page - 2) {
-                  pageNum = pagination.last_page - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={page === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPage(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(page + 1)}
-              disabled={page >= pagination.last_page}
-            >
-              Sau
-            </Button>
-          </div>
+      {/* Pagination - Luôn hiển thị */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          {pagination 
+            ? `Hiển thị ${pagination.from || 0} - ${pagination.to || 0} trong tổng số ${pagination.total} khách hàng`
+            : `Tổng ${customers.length} khách hàng`
+          }
         </div>
-      )}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page - 1)}
+            disabled={page <= 1}
+          >
+            Trước
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.max(1, pagination?.last_page || 1) }, (_, i) => i + 1)
+              .slice(Math.max(0, page - 3), page + 2)
+              .map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={page === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              ))}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page + 1)}
+            disabled={!pagination || page >= pagination.last_page}
+          >
+            Sau
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

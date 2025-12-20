@@ -3,26 +3,43 @@ import { adminUserApi, AdminUser, CreateUserRequest, UpdateUserRequest, UserRole
 import { toast } from 'sonner';
 import { getErrorMessage } from './error-handler';
 
+export interface Pagination {
+  total: number;
+  per_page: number;
+  current_page: number;
+  last_page: number;
+  from: number | null;
+  to: number | null;
+}
+
 export function useAdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch all users
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (params?: Record<string, string>) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await adminUserApi.getUsers();
+      const response = params 
+        ? await adminUserApi.searchUsers(params)
+        : await adminUserApi.getUsers();
       if (response.data) {
         // Laravel returns { users: [], pagination: {} }
         const data: any = response.data;
         if (Array.isArray(data)) {
           setUsers(data);
+          setPagination(null);
         } else if (data.users && Array.isArray(data.users)) {
           setUsers(data.users);
+          if (data.pagination) {
+            setPagination(data.pagination);
+          }
         } else {
           setUsers([]);
+          setPagination(null);
         }
       }
     } catch (err: any) {
@@ -30,6 +47,7 @@ export function useAdminUsers() {
       setError(errorMsg);
       toast.error(errorMsg);
       setUsers([]); // Set empty array on error
+      setPagination(null);
     } finally {
       setLoading(false);
     }
@@ -41,20 +59,20 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
       const response = await adminUserApi.searchUsers(params);
-      console.log('Search response:', response); // Debug log
       if (response.data) {
         // Handle both array and object responses
         const data: any = response.data;
-        console.log('Search data:', data); // Debug log
         if (Array.isArray(data)) {
-          console.log('Setting users (array):', data.length);
           setUsers(data);
+          setPagination(null);
         } else if (data.users && Array.isArray(data.users)) {
-          console.log('Setting users (object):', data.users.length);
           setUsers(data.users);
+          if (data.pagination) {
+            setPagination(data.pagination);
+          }
         } else {
-          console.log('No users found in response');
           setUsers([]);
+          setPagination(null);
         }
       }
     } catch (err: any) {
@@ -62,6 +80,7 @@ export function useAdminUsers() {
       setError(errorMsg);
       toast.error(errorMsg);
       setUsers([]);
+      setPagination(null);
     } finally {
       setLoading(false);
     }
@@ -119,6 +138,7 @@ export function useAdminUsers() {
 
   return {
     users,
+    pagination,
     loading,
     error,
     fetchUsers,

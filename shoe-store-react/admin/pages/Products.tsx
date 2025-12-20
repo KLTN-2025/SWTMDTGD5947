@@ -17,7 +17,6 @@ import { Link } from "react-router-dom";
 import { 
   Plus, 
   Search, 
-  Filter, 
   Eye, 
   Edit, 
   Trash2, 
@@ -33,9 +32,10 @@ export default function Products() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [page, setPage] = useState(1);
   
   // Use real API with server-side filtering
-  const { products, loading, deleteProduct: apiDeleteProduct, searchProducts } = useAdminProducts();
+  const { products, pagination, loading, deleteProduct: apiDeleteProduct, searchProducts } = useAdminProducts();
   const { categories } = useAdminCategories();
   
   // Server-side search with debounce
@@ -55,13 +55,16 @@ export default function Products() {
       }
       // Note: "low" stock can't be filtered by status, need quantity check
       
+      // Add pagination
+      params.page = String(page);
+      params.per_page = "10";
+      
       // Call search API with params object
-      console.log('Search params:', params);
       searchProducts(params);
     }, 500); // Debounce 500ms
     
     return () => clearTimeout(timer);
-  }, [q, categoryFilter, stockFilter]);
+  }, [q, categoryFilter, stockFilter, page]);
   
   // Client-side filter for "low stock" since backend doesn't support it
   const visible = stockFilter === "low" 
@@ -78,8 +81,14 @@ export default function Products() {
     }
   };
 
+  // Reset page when filters change
+  const handleFilterChange = (setter: (value: string) => void, value: string) => {
+    setter(value);
+    setPage(1);
+  };
+
   // Calculate stats
-  const totalProducts = products.length;
+  const totalProducts = pagination?.total || products.length;
   const lowStockProducts = products.filter(p => p.quantity < 10).length;
   const outOfStockProducts = products.filter(p => p.quantity === 0).length;
   const totalValue = products.reduce((sum, p) => sum + (p.basePrice * p.quantity), 0);
@@ -177,7 +186,7 @@ export default function Products() {
               />
             </div>
             
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={(v) => handleFilterChange(setCategoryFilter, v)}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Danh mục" />
               </SelectTrigger>
@@ -189,7 +198,7 @@ export default function Products() {
               </SelectContent>
             </Select>
 
-            <Select value={stockFilter} onValueChange={setStockFilter}>
+            <Select value={stockFilter} onValueChange={(v) => handleFilterChange(setStockFilter, v)}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Tồn kho" />
               </SelectTrigger>
@@ -413,9 +422,54 @@ export default function Products() {
                 setQ("");
                 setCategoryFilter("all");
                 setStockFilter("all");
+                setPage(1);
               }}>
                 Xóa bộ lọc
               </Button>
+            </div>
+          )}
+
+          {/* Pagination - Luôn hiển thị */}
+          {!loading && (
+            <div className="flex items-center justify-between pt-4 border-t mt-4">
+              <div className="text-sm text-gray-500">
+                {pagination 
+                  ? `Hiển thị ${pagination.from || 0} - ${pagination.to || 0} trong tổng số ${pagination.total} sản phẩm`
+                  : `Tổng ${visible.length} sản phẩm`
+                }
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page <= 1}
+                >
+                  Trước
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.max(1, pagination?.last_page || 1) }, (_, i) => i + 1)
+                    .slice(Math.max(0, page - 3), page + 2)
+                    .map((pageNum) => (
+                      <Button
+                        key={pageNum}
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page + 1)}
+                  disabled={!pagination || page >= pagination.last_page}
+                >
+                  Sau
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

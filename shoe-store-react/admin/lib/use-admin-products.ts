@@ -3,26 +3,43 @@ import { adminProductApi, AdminProduct, CreateProductRequest, UpdateProductReque
 import { toast } from 'sonner';
 import { getErrorMessage } from './error-handler';
 
+export interface Pagination {
+  total: number;
+  per_page: number;
+  current_page: number;
+  last_page: number;
+  from: number | null;
+  to: number | null;
+}
+
 export function useAdminProducts() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch all products
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (params?: Record<string, string>) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await adminProductApi.getProducts();
+      const response = params 
+        ? await adminProductApi.searchProducts(params)
+        : await adminProductApi.getProducts();
       if (response.data) {
         // Laravel returns { products: [], pagination: {} }
         const data: any = response.data;
         if (Array.isArray(data)) {
           setProducts(data);
+          setPagination(null);
         } else if (data.products && Array.isArray(data.products)) {
           setProducts(data.products);
+          if (data.pagination) {
+            setPagination(data.pagination);
+          }
         } else {
           setProducts([]);
+          setPagination(null);
         }
       }
     } catch (err: any) {
@@ -30,6 +47,7 @@ export function useAdminProducts() {
       setError(errorMsg);
       toast.error(errorMsg);
       setProducts([]); // Set empty array on error
+      setPagination(null);
     } finally {
       setLoading(false);
     }
@@ -41,20 +59,20 @@ export function useAdminProducts() {
       setLoading(true);
       setError(null);
       const response = await adminProductApi.searchProducts(params);
-      console.log('Search response:', response); // Debug log
       if (response.data) {
         // Handle both array and object responses
         const data: any = response.data;
-        console.log('Search data:', data); // Debug log
         if (Array.isArray(data)) {
-          console.log('Setting products (array):', data.length);
           setProducts(data);
+          setPagination(null);
         } else if (data.products && Array.isArray(data.products)) {
-          console.log('Setting products (object):', data.products.length);
           setProducts(data.products);
+          if (data.pagination) {
+            setPagination(data.pagination);
+          }
         } else {
-          console.log('No products found in response');
           setProducts([]);
+          setPagination(null);
         }
       }
     } catch (err: any) {
@@ -62,6 +80,7 @@ export function useAdminProducts() {
       setError(errorMsg);
       toast.error(errorMsg);
       setProducts([]);
+      setPagination(null);
     } finally {
       setLoading(false);
     }
@@ -133,6 +152,7 @@ export function useAdminProducts() {
 
   return {
     products,
+    pagination,
     loading,
     error,
     fetchProducts,
